@@ -53,20 +53,12 @@ last_sector equ SECTORS
 
 %define PA_RISC_LINUX_PARTITION_TYPE 0xf0
 %define LBA_FIRST_SECTOR_IN_PARTITION 1
-%define MBR_SECTOR 1
 number_sectors_in_partition equ (CYLINDERS * HEADS * SECTORS - MBR_SECTOR)
 
 blank_partition_entries_size equ \
     BYTES_PER_PARTITION_ENTRY * NUM_OF_EMPTY_PARTITION_ENTRIES
 
-%define EXTENDED_READ_FUNCTION_CODE 0x42
-%define DISK_ADDRESS_PACKET_SIZE 16
-%define NUM_SECTORS_TO_READ 5
 %define LOADER_START_SECTOR 1
-
-%define DISK 0x80
-
-%define BIOS_DISK_SERVICES 0x13
 
 
 ; In Real mode: Intel 8086.
@@ -120,7 +112,7 @@ jmp done
 loader_disk_address_packet:
 db DISK_ADDRESS_PACKET_SIZE
 db 0
-dw NUM_SECTORS_TO_READ
+dw NUM_OF_LOADER_SECTORS_TO_READ
 dd loader_address
 dq LOADER_START_SECTOR
 

@@ -16,11 +16,23 @@
 
 ; Shared definitions for Toucanix.
 
+%define DISK 0x80
+%define DISK_ADDRESS_PACKET_SIZE 16
+%define EXTENDED_READ_FUNCTION_CODE 0x42
+%define BIOS_DISK_SERVICES 0x13
+
+%define MBR_SECTOR 1
+%define NUM_OF_LOADER_SECTORS_TO_READ 5
 
 %define MBR_ADDRESS 0x7c00
 %define VIDEO_ADDRESS 0xb8000
 video_segment equ VIDEO_ADDRESS / 16
 loader_address equ MBR_ADDRESS + 512
+
+%define KERNEL_ADDRESS 0x10000
+kernel_segment equ KERNEL_ADDRESS / 16
+kernel_offset equ KERNEL_ADDRESS % 16
+
 
 ; Colours (in hex).
 %define BLACK 0

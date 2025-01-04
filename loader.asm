@@ -24,7 +24,9 @@
 ; SMAP. PAMS in little-endian.
 %define SYSTEM_MAP_SIGNATURE 0x534D4150
 %define ADDRESS_RANGE_DESCRIPTOR_SIZE 20
-
+%define NUM_OF_KERNEL_SECTORS_TO_READ 120
+kernel_start_sector equ MBR_SECTOR + NUM_OF_LOADER_SECTORS_TO_READ
+%define NUM_OF_KERNEL_SECTORS_TO_READ 120
 
 
 [BITS 16]
@@ -45,6 +47,15 @@ jz ok
 add edi, ADDRESS_RANGE_DESCRIPTOR_SIZE
 jmp loop
 
+; Load kernel.
+mov dl, DISK
+xor ax, ax
+mov ds, ax
+mov si, kernel_disk_address_packet
+mov ah, EXTENDED_READ_FUNCTION_CODE
+int BIOS_DISK_SERVICES
+jc error
+
 error:
 mov ax, video_segment
 mov es, ax
@@ -63,3 +74,12 @@ mov byte [es:di + 1], green_on_black
 done:
 hlt
 jmp done
+
+
+; For reading kernel into memory.
+kernel_disk_address_packet:
+db DISK_ADDRESS_PACKET_SIZE
+db 0
+dw NUM_OF_KERNEL_SECTORS_TO_READ
+dw kernel_offset, kernel_segment
+dq kernel_start_sector
