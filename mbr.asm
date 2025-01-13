@@ -42,9 +42,6 @@ bytes_before_partition_table equ (BYTES_PER_BLOCK \
 %define SECTORS 63
 
 last_cylinder equ CYLINDERS - 1
-upper_two_bits_of_last_cylinder equ (last_cylinder >> 2) & 1100_0000b
-lower_eight_bits_of_last_cylinder equ last_cylinder & 1111_1111b
-
 last_head equ HEADS - 1
 
 ; Sector index commences at 1, not 0.
@@ -135,9 +132,10 @@ db FIRST_CYLINDER_IN_PARTITION
 
 db PA_RISC_LINUX_PARTITION_TYPE
 
+
 db last_head
-db upper_two_bits_of_last_cylinder | last_sector
-db lower_eight_bits_of_last_cylinder
+db last_cylinder >> 2 & 0xc0 | last_sector
+db last_cylinder & 0xff
 
 dd LBA_FIRST_SECTOR_IN_PARTITION
 

@@ -23,14 +23,24 @@ set -x
 set -e
 set -u
 
+mbr_sector=1
+loader_sectors=1
+# kernel_sectors=120
+asm=nasm
+
 rm -f boot.img.lock
 
 dd if=/dev/zero of=boot.img bs=512 count=20160
-nasm -f bin -o mbr.bin mbr.asm
-nasm -f bin -o loader.bin loader.asm
+"$asm" -f bin -o mbr.bin mbr.asm
+"$asm" -f bin -o loader.bin loader.asm
+"$asm" -f bin -o kernel.bin kernel.asm
 
 dd if=mbr.bin of=boot.img conv=notrunc
-dd if=loader.bin of=boot.img bs=512 seek=1 conv=notrunc
+
+dd if=loader.bin of=boot.img bs=512 seek="$mbr_sector" conv=notrunc
+
+dd if=kernel.bin of=boot.img bs=512 seek="$((mbr_sector + loader_sectors))" \
+    conv=notrunc
 
 qemu-system-x86_64 -cpu kvm64,pdpe1gb -m 1024 \
     -drive file=boot.img,index=0,media=disk,format=raw

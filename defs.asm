@@ -22,7 +22,7 @@
 %define BIOS_DISK_SERVICES 0x13
 
 %define MBR_SECTOR 1
-%define NUM_OF_LOADER_SECTORS_TO_READ 5
+%define NUM_OF_LOADER_SECTORS_TO_READ 1
 
 %define MBR_ADDRESS 0x7c00
 %define VIDEO_ADDRESS 0xb8000
@@ -33,17 +33,41 @@ loader_address equ MBR_ADDRESS + 512
 kernel_segment equ KERNEL_ADDRESS / 16
 kernel_offset equ KERNEL_ADDRESS % 16
 
+%define NUM_OF_KERNEL_SECTORS_TO_READ 120
+kernel_size equ NUM_OF_KERNEL_SECTORS_TO_READ * 512
+
+%define KERNEL_NEW_ADDRESS 0x200000
 
 ; Colours (in hex).
 %define BLACK 0
 %define LIGHT_GREY 7
-%define LIGHT_GREEN A
+%define LIGHT_GREEN 0xa
 %define MAGENTA 5
-%define YELLOW E
-
-%define text_colour(bg, fg) 0x %+ bg %+ fg
+%define YELLOW 0xe
 
 ; Colour combinations.
-grey_on_black equ text_colour(BLACK, LIGHT_GREY)
-green_on_black equ text_colour(BLACK, LIGHT_GREEN)
-yellow_on_magenta equ text_colour(MAGENTA, YELLOW)
+grey_on_black equ BLACK << 4 | LIGHT_GREY
+green_on_black equ BLACK << 4 | LIGHT_GREY
+yellow_on_magenta equ MAGENTA << 4 | YELLOW
+
+
+%define PRESENT_BIT_SET                 (1 << 7)
+%define DESCRIPTOR_PRIVILEGE_LEVEL_USER (3 << 5)
+%define TYPE_IS_CODE_OR_DATA_SEGMENT    (1 << 4)
+%define EXECUTABLE                      (1 << 3)
+%define CODE_READ_OR_DATA_WRITE_ACCESS  (1 << 1)
+
+code_access_byte_64 equ PRESENT_BIT_SET \
+    | TYPE_IS_CODE_OR_DATA_SEGMENT      \
+    | EXECUTABLE
+
+%define GRANULARITY_4_KIB   (1 << 3)
+%define SIZE_32_BIT_SEGMENT (1 << 2)
+%define LONG_MODE_CODE      (1 << 1)
+
+flags_nibble_64 equ LONG_MODE_CODE
+
+
+%define NULL_SEGMENT 0
+%define CODE_SEGMENT_INDEX 1
+code_selector equ CODE_SEGMENT_INDEX << 3
