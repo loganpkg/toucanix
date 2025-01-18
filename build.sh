@@ -23,24 +23,44 @@ set -x
 set -e
 set -u
 
+# Disk.
+cylinders=20
+heads=16
+sectors=63
+
 mbr_sector=1
 loader_sectors=1
 # kernel_sectors=120
 asm=nasm
+bytes_per_block=512
+
+if grep -rEnI --exclude-dir=.git '.{80}'
+then
+    printf '%s: ERROR: Long lines\n' "$0" 1>&2
+    exit 1
+fi
+
+find . -type d ! -path '*.git*'                -exec chmod 700 '{}' \;
+find . -type f ! -path '*.git*' ! -name '*.sh' -exec chmod 600 '{}' \;
+find . -type f ! -path '*.git*'   -name '*.sh' -exec chmod 700 '{}' \;
+
 
 rm -f boot.img.lock
 
-dd if=/dev/zero of=boot.img bs=512 count=20160
+dd if=/dev/zero of=boot.img bs="$bytes_per_block" \
+    count="$((cylinders * heads * sectors))"
+
 "$asm" -f bin -o mbr.bin mbr.asm
 "$asm" -f bin -o loader.bin loader.asm
 "$asm" -f bin -o kernel.bin kernel.asm
 
 dd if=mbr.bin of=boot.img conv=notrunc
 
-dd if=loader.bin of=boot.img bs=512 seek="$mbr_sector" conv=notrunc
-
-dd if=kernel.bin of=boot.img bs=512 seek="$((mbr_sector + loader_sectors))" \
+dd if=loader.bin of=boot.img bs="$bytes_per_block" seek="$mbr_sector" \
     conv=notrunc
+
+dd if=kernel.bin of=boot.img bs="$bytes_per_block" \
+    seek="$((mbr_sector + loader_sectors))" conv=notrunc
 
 qemu-system-x86_64 -cpu kvm64,pdpe1gb -m 1024 \
     -drive file=boot.img,index=0,media=disk,format=raw

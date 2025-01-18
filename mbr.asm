@@ -19,43 +19,41 @@
 %include "defs.asm"
 
 
-%define BIOS_VIDEO_SERVICES 0x10
-%define SET_VIDEO_MODE 0
-%define TEXT_MODE_80_x_25_COLOUR 3
+BIOS_VIDEO_SERVICES equ 0x10
+SET_VIDEO_MODE equ 0
+TEXT_MODE_80_x_25_COLOUR equ 3
 
 
-%define BYTES_PER_BLOCK 512
-%define NUM_OF_PARTITION_ENTRIES 4
-%define NUM_OF_EMPTY_PARTITION_ENTRIES 3
-%define BYTES_PER_PARTITION_ENTRY 16
-%define BOOT_SIGNATURE 0x55, 0xAA
-%define BOOT_SIGNATURE_LEN 2
-bytes_before_partition_table equ (BYTES_PER_BLOCK \
-    - BYTES_PER_PARTITION_ENTRY * NUM_OF_PARTITION_ENTRIES - BOOT_SIGNATURE_LEN)
+NUM_OF_PARTITION_ENTRIES equ 4
+NUM_OF_EMPTY_PARTITION_ENTRIES equ 3
+BYTES_PER_PARTITION_ENTRY equ 16
+BOOT_SIGNATURE equ 0xAA55
+BOOT_SIGNATURE_LEN equ 2
+BYTES_BEFORE_PARTITION_TABLE equ (BYTES_PER_BLOCK \
+    - BYTES_PER_PARTITION_ENTRY * NUM_OF_PARTITION_ENTRIES \
+    - BOOT_SIGNATURE_LEN)
 
-%define BOOTABLE 0x80
-%define FIRST_CYLINDER_IN_PARTITION 0
-%define FIRST_HEAD_IN_PARTITION 0
-%define FIRST_SECTOR_IN_PARTITION 2
-%define CYLINDERS 20
-%define HEADS 16
-%define SECTORS 63
+BOOTABLE equ 0x80
+FIRST_CYLINDER_IN_PARTITION equ 0
+FIRST_HEAD_IN_PARTITION equ 0
+FIRST_SECTOR_IN_PARTITION equ 2
+CYLINDERS equ 20
+HEADS equ 16
+SECTORS equ 63
 
-last_cylinder equ CYLINDERS - 1
-last_head equ HEADS - 1
+LAST_CYLINDER equ CYLINDERS - 1
+LAST_HEAD equ HEADS - 1
 
 ; Sector index commences at 1, not 0.
-last_sector equ SECTORS
+LAST_SECTOR equ SECTORS
 
-
-%define PA_RISC_LINUX_PARTITION_TYPE 0xf0
-%define LBA_FIRST_SECTOR_IN_PARTITION 1
-number_sectors_in_partition equ (CYLINDERS * HEADS * SECTORS - MBR_SECTOR)
-
-blank_partition_entries_size equ \
+BLANK_PARTITION_ENTRIES_SIZE equ \
     BYTES_PER_PARTITION_ENTRY * NUM_OF_EMPTY_PARTITION_ENTRIES
 
-%define LOADER_START_SECTOR 1
+PA_RISC_LINUX_PARTITION_TYPE equ 0xf0
+LBA_FIRST_SECTOR_IN_PARTITION equ 1
+NUMBER_SECTORS_IN_PARTITION equ CYLINDERS * HEADS * SECTORS - MBR_SECTOR
+LOADER_START_SECTOR equ 1
 
 
 ; In Real mode: Intel 8086.
@@ -87,15 +85,15 @@ mov ah, EXTENDED_READ_FUNCTION_CODE
 int BIOS_DISK_SERVICES
 jc error
 
-jmp loader_address
+jmp LOADER_ADDRESS
 
 
 error:
-mov ax, video_segment
+mov ax, VIDEO_SEGMENT
 mov es, ax
 xor di, di
 mov byte [es:di], 'E'
-mov byte [es:di + 1], yellow_on_magenta
+mov byte [es:di + 1], YELLOW_ON_MAGENTA
 
 done:
 hlt
@@ -110,14 +108,14 @@ loader_disk_address_packet:
 db DISK_ADDRESS_PACKET_SIZE
 db 0
 dw NUM_OF_LOADER_SECTORS_TO_READ
-dd loader_address
+dd LOADER_ADDRESS
 dq LOADER_START_SECTOR
 
 
 
 
 ; Zero to the start of the partition table.
-times bytes_before_partition_table - ($ - $$) db 0
+times BYTES_BEFORE_PARTITION_TABLE - ($ - $$) db 0
 
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -133,15 +131,15 @@ db FIRST_CYLINDER_IN_PARTITION
 db PA_RISC_LINUX_PARTITION_TYPE
 
 
-db last_head
-db last_cylinder >> 2 & 0xc0 | last_sector
-db last_cylinder & 0xff
+db LAST_HEAD
+db LAST_CYLINDER >> 2 & 0xc0 | LAST_SECTOR
+db LAST_CYLINDER & 0xff
 
 dd LBA_FIRST_SECTOR_IN_PARTITION
 
-dd number_sectors_in_partition
+dd NUMBER_SECTORS_IN_PARTITION
 
 ; Add blank entries.
-times blank_partition_entries_size db 0
+times BLANK_PARTITION_ENTRIES_SIZE db 0
 
-db BOOT_SIGNATURE
+dw BOOT_SIGNATURE
