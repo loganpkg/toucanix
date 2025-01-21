@@ -26,31 +26,32 @@ SYSTEM_MAP_SIGNATURE equ 0x534D4150
 ADDRESS_RANGE_DESCRIPTOR_SIZE equ 20
 KERNEL_START_SECTOR equ MBR_SECTOR + NUM_OF_LOADER_SECTORS_TO_READ
 
+; PM = Protected Mode.
 
-CODE_ACCESS_BYTE equ PRESENT_BIT_SET \
+CODE_ACCESS_BYTE_PM equ PRESENT_BIT_SET \
     | TYPE_IS_CODE_OR_DATA_SEGMENT   \
     | EXECUTABLE                     \
     | CODE_READ_OR_DATA_WRITE_ACCESS
 
-DATA_ACCESS_BYTE equ PRESENT_BIT_SET \
+DATA_ACCESS_BYTE_PM equ PRESENT_BIT_SET \
     | TYPE_IS_CODE_OR_DATA_SEGMENT   \
     | CODE_READ_OR_DATA_WRITE_ACCESS
 
-FLAGS_NIBBLE equ GRANULARITY_4_KIB \
+FLAGS_NIBBLE_PM equ GRANULARITY_4_KIB \
     | SIZE_32_BIT_SEGMENT
 
 
 BASE_ADDRESS equ 0
 
-SEGMENT_LIMIT equ 0xfffff
-SEGMENT_LIMIT_64 equ 0
+SEGMENT_LIMIT_PM equ 0xfffff
+SEGMENT_LIMIT equ 0
 
 DATA_SEGMENT_INDEX equ 2
 DATA_SELECTOR equ DATA_SEGMENT_INDEX << 3
 
-
-IDT_INVALID_SIZE_MINUS_1 equ 0
-INTERRUPT_DESCRIPTOR_TABLE_INVALID_ADDRESS equ 0
+; IDT = Interrupt Descriptor Table.
+IDT_PM_INVALID_SIZE_MINUS_1 equ 0
+IDT_PM_INVALID_ADDRESS equ 0
 
 PROTECTED_MODE equ 1
 
@@ -70,11 +71,10 @@ PML4_SIZE equ 0x1000
 PDP_ADDRESS equ PML4_ADDRESS + PML4_SIZE
 PDP_SIZE equ 0x1000
 
-BYTES_PER_DOUBLE_WORD equ 4
 
 PAGE_PRESENT equ 1
-READ_AND_WRITE equ 1 << 2
-USER_ACCESS equ 1 << 3
+READ_AND_WRITE equ 1 << 1
+USER_ACCESS equ 1 << 2
 GIB_SIZE equ 1 << 7
 
 
@@ -120,8 +120,8 @@ kernel_loaded:
 
 ; Prepare for Protected Mode.
 cli
-lgdt [GDT_descriptor]
-lidt [IDT_descriptor]
+lgdt [GDT_PM_descriptor]
+lidt [IDT_PM_descriptor]
 
 mov eax, cr0
 or eax, PROTECTED_MODE
@@ -149,6 +149,10 @@ xor eax, eax
 mov ecx, (PML4_SIZE + PDP_SIZE) / BYTES_PER_DOUBLE_WORD
 rep stosd
 
+jmp cool
+db 'ELEPHANT'
+cool:
+
 mov dword [PML4_ADDRESS], \
     PDP_ADDRESS | USER_ACCESS | READ_AND_WRITE | PAGE_PRESENT
 
@@ -156,12 +160,17 @@ mov dword [PML4_ADDRESS], \
 mov dword [PDP_ADDRESS], \
     GIB_SIZE | USER_ACCESS | READ_AND_WRITE | PAGE_PRESENT
 
+jmp cool2
+db 'ELEPHANT'
+cool2:
+
+
 mov eax, PML4_ADDRESS
 mov cr3, eax
 
 
 ; Prepare for Long Mode.
-lgdt [GDT_descriptor_64]
+lgdt [GDT_descriptor]
 
 mov ecx, MSR_EFER
 rdmsr
@@ -205,50 +214,49 @@ dw KERNEL_OFFSET, KERNEL_SEGMENT
 dq KERNEL_START_SECTOR
 
 
-global_descriptor_table:
+global_descriptor_table_PM:
 dq NULL_SEGMENT
 
 ; Code segment.
-dw SEGMENT_LIMIT & 0xffff
+dw SEGMENT_LIMIT_PM & 0xffff
 dw BASE_ADDRESS & 0xffff
 db BASE_ADDRESS >> 16 & 0xff
-db CODE_ACCESS_BYTE
-db FLAGS_NIBBLE << 4 | SEGMENT_LIMIT >> 16
+db CODE_ACCESS_BYTE_PM
+db FLAGS_NIBBLE_PM << 4 | SEGMENT_LIMIT_PM >> 16
 db BASE_ADDRESS >> 24
 
 ; Data segment.
-dw SEGMENT_LIMIT & 0xffff
+dw SEGMENT_LIMIT_PM & 0xffff
 dw BASE_ADDRESS & 0xffff
 db BASE_ADDRESS >> 16 & 0xff
-db DATA_ACCESS_BYTE
-db FLAGS_NIBBLE << 4 | SEGMENT_LIMIT >> 16
+db DATA_ACCESS_BYTE_PM
+db FLAGS_NIBBLE_PM << 4 | SEGMENT_LIMIT_PM >> 16
 db BASE_ADDRESS >> 24
 
-
-GDT_SIZE_MINUS_1 equ $ - global_descriptor_table - 1
-
-
-GDT_descriptor:
-dw GDT_SIZE_MINUS_1
-dd global_descriptor_table
+GDT_PM_SIZE equ $ - global_descriptor_table_PM
 
 
-IDT_descriptor:
-dw IDT_INVALID_SIZE_MINUS_1
-dd INTERRUPT_DESCRIPTOR_TABLE_INVALID_ADDRESS
+GDT_PM_descriptor:
+dw GDT_PM_SIZE - 1
+dd global_descriptor_table_PM
+
+
+IDT_PM_descriptor:
+dw IDT_PM_INVALID_SIZE_MINUS_1
+dd IDT_PM_INVALID_ADDRESS
 
 
 
-global_descriptor_table_64:
+global_descriptor_table:
 dq NULL_SEGMENT
 
 ; Code segment. Base and limit are ignored.
 dw 0, 0
-db 0, CODE_ACCESS_BYTE_64, FLAGS_NIBBLE_64 << 4, 0
+db 0, CODE_ACCESS_BYTE, LONG_MODE_CODE << 4, 0
 
-GDT_64_SIZE_MINUS_1 equ $ - global_descriptor_table_64 - 1
+GDT_SIZE equ $ - global_descriptor_table
 
 
-GDT_descriptor_64:
-dw GDT_64_SIZE_MINUS_1
-dd global_descriptor_table_64
+GDT_descriptor:
+dw GDT_SIZE - 1
+dd global_descriptor_table

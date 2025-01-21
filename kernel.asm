@@ -49,12 +49,46 @@ MODE_8086           equ 1
 ONLY_IQR_0_ENABLED  equ 0xe
 MASK_ALL            equ 0xf
 
+; Non-Specific.
+END_OF_INTERRUPT equ 1 << 5
+
+
+; GDT.
+USER_CODE_SEGMENT_INDEX equ 2
+USER_DATA_SEGMENT_INDEX equ 3
+TSS_INDEX equ 4
+
+USER_CODE_SELECTOR equ USER_CODE_SEGMENT_INDEX << 3 | USER_RING
+USER_DATA_SELECTOR equ USER_DATA_SEGMENT_INDEX << 3 | USER_RING
+TSS_SELECTOR equ TSS_INDEX << 3
+
+RFLAGS_INTERRUPT_ENABLE equ 1 << 9
+RFLAGS_RESERVED_BIT_1 equ 1 << 1
+
+CPL_MASK equ 3
+
+KERNEL_STACK_ADDRESS equ 0x150000
+TSS_SIZE equ 104
+
+TSS_AVAILABLE equ 9
+
 
 [BITS 64]
 [ORG KERNEL_NEW_ADDRESS]
 
+; Complete TSS entry in GDT.
+mov rax, task_state_segment
+mov word [tss_base_a_word], ax
+shr rax, 16
+mov byte [tss_base_b_byte], al
+shr rax, 8
+mov byte [tss_base_c_byte], al
+shr rax, 8
+mov dword [tss_base_d_dword], eax
+
+
 mov rax, divide_by_zero
-mov rdi, interrupt_descriptor_table_64
+mov rdi, interrupt_descriptor_table
 mov [rdi], ax       ; Offset: Lower two bytes.
 shr rax, 16
 mov [rdi + OFFSET_16_TO_31], ax
@@ -63,7 +97,7 @@ mov [rdi + OFFSET_32_TO_63], eax
 
 
 mov rax, interval_timer
-mov rdi, interrupt_descriptor_table_64 + IRQ_0_MAP * IDT_ENTRY_SIZE
+mov rdi, interrupt_descriptor_table + IRQ_0_MAP * IDT_ENTRY_SIZE
 mov [rdi], ax       ; Offset: Lower two bytes.
 shr rax, 16
 mov [rdi + OFFSET_16_TO_31], ax
@@ -71,8 +105,11 @@ shr rax, 16
 mov [rdi + OFFSET_32_TO_63], eax
 
 
-lgdt [GDT_descriptor_64]
-lidt [IDT_descriptor_64]
+lgdt [GDT_descriptor]
+lidt [IDT_descriptor]
+mov ax, TSS_SELECTOR
+ltr ax
+
 
 ; Set cs register.
 push CODE_SELECTOR
@@ -120,14 +157,29 @@ mov al, MASK_ALL
 out PIC_SLAVE_DATA, al
 
 
-sti
+; Enter user mode.
+push USER_DATA_SELECTOR
+push MBR_ADDRESS
+push RFLAGS_INTERRUPT_ENABLE | RFLAGS_RESERVED_BIT_1
+push USER_CODE_SELECTOR
+push user_start
+iretq
 
-; xor rbx, rbx
-; div rbx
 
+user_start:
+
+; Check CPL.
+mov ax, cs
+and ax, CPL_MASK
+cmp ax, USER_RING
+jne done
+
+mov byte [VIDEO_ADDRESS], '3'
+mov byte [VIDEO_ADDRESS + 1], GREEN_ON_BLACK
+
+jmp user_start
 
 done:
-hlt
 jmp done
 
 
@@ -142,31 +194,61 @@ iretq
 
 interval_timer:
 %include "push_all.asm"
-mov byte [VIDEO_ADDRESS], 'I'
-mov byte [VIDEO_ADDRESS + 1], GREEN_ON_BLACK
-jmp done
+mov byte [VIDEO_ADDRESS + 2], 'I'
+mov byte [VIDEO_ADDRESS + 2 + 1], GREEN_ON_BLACK
+
+mov al, END_OF_INTERRUPT
+out PIC_MASTER_COMMAND, al
+
 %include "pop_all.asm"
 iretq
 
 
+
+
 ; Data.
 
-global_descriptor_table_64:
+global_descriptor_table:
+; Base and limit are ignored (except for the TSS).
 dq NULL_SEGMENT
 
-; Code segment. Base and limit are ignored.
+; Code segment for kernel.
 dw 0, 0
-db 0, CODE_ACCESS_BYTE_64, FLAGS_NIBBLE_64 << 4, 0
+db 0, CODE_ACCESS_BYTE, LONG_MODE_CODE << 4, 0
 
-GDT_64_SIZE_MINUS_1 equ $ - global_descriptor_table_64 - 1
+; Code segment for user.
+dw 0, 0
+db 0, CODE_ACCESS_BYTE | DESCRIPTOR_PRIVILEGE_LEVEL_USER, \
+    LONG_MODE_CODE << 4, 0
+
+; Data segment for user.
+dw 0, 0
+db 0, PRESENT_BIT_SET | DESCRIPTOR_PRIVILEGE_LEVEL_USER \
+    | TYPE_IS_CODE_OR_DATA_SEGMENT | CODE_READ_OR_DATA_WRITE_ACCESS, 0, 0
+
+; TSS entry. Double the usual GDT entry size.
+dw TSS_SIZE - 1 & 0xffff
+tss_base_a_word:
+dw 0
+tss_base_b_byte:
+db 0
+db PRESENT_BIT_SET | TSS_AVAILABLE
+db TSS_SIZE - 1 >> 16
+tss_base_c_byte:
+db 0
+tss_base_d_dword:
+dd 0
+dd 0
+
+GDT_SIZE equ $ - global_descriptor_table
 
 
-GDT_descriptor_64:
-dw GDT_64_SIZE_MINUS_1
-dq global_descriptor_table_64
+GDT_descriptor:
+dw GDT_SIZE - 1
+dq global_descriptor_table
 
 
-interrupt_descriptor_table_64:
+interrupt_descriptor_table:
 %rep IDT_NUM_ENTRIES
 dw 0
 dw CODE_SELECTOR
@@ -177,9 +259,16 @@ dd 0
 dd 0
 %endrep
 
-IDT_64_SIZE_MINUS_1 equ $ - interrupt_descriptor_table_64 - 1
+IDT_SIZE equ $ - interrupt_descriptor_table
 
 
-IDT_descriptor_64:
-dw IDT_64_SIZE_MINUS_1
-dq interrupt_descriptor_table_64
+IDT_descriptor:
+dw IDT_SIZE - 1
+dq interrupt_descriptor_table
+
+
+task_state_segment:
+dd 0
+dq KERNEL_STACK_ADDRESS
+times TSS_SIZE - ($ - task_state_segment) - BYTES_PER_DOUBLE_WORD db 0
+dd TSS_SIZE
