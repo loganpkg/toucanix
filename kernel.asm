@@ -35,6 +35,7 @@ PIT_COUNTER equ OSCILLATOR_FREQUENCY_HZ / EVENTS_PER_SECOND
 
 
 ; Programmable Interrupt Controller (PIC).
+; IRQ = Interrupt ReQuest.
 PIC_MASTER_COMMAND  equ 0x20
 PIC_MASTER_DATA     equ PIC_MASTER_COMMAND + 1
 PIC_SLAVE_COMMAND   equ 0xa0
@@ -42,12 +43,20 @@ PIC_SLAVE_DATA      equ PIC_SLAVE_COMMAND + 1
 INIT_COMMAND        equ 1 << 4
 FOUR_BYTE_INIT_SEQ  equ 1
 IRQ_0_MAP           equ 32
+IRQ_7_MAP           equ IRQ_0_MAP + 7
 NUM_IRQ_ON_MASTER   equ 8
 IRQ_8_MAP           equ IRQ_0_MAP + NUM_IRQ_ON_MASTER
 SLAVE_TO_MASTER_IQR equ 2
 MODE_8086           equ 1
 ONLY_IQR_0_ENABLED  equ 0xe
 MASK_ALL            equ 0xf
+
+; Operation Control Word 3.
+OCW_3_FIXED_BIT     equ 1 << 3
+READ_REGISTER       equ 1 << 1
+IN_SERVICE_REGISTER equ 1
+
+IRQ_7_MASK          equ 1 << 7
 
 ; Non-Specific.
 END_OF_INTERRUPT equ 1 << 5
@@ -87,22 +96,18 @@ shr rax, 8
 mov dword [tss_base_d_dword], eax
 
 
+
 mov rax, divide_by_zero
 mov rdi, interrupt_descriptor_table
-mov [rdi], ax       ; Offset: Lower two bytes.
-shr rax, 16
-mov [rdi + OFFSET_16_TO_31], ax
-shr rax, 16
-mov [rdi + OFFSET_32_TO_63], eax
-
+call set_interrupt_service_routine
 
 mov rax, interval_timer
 mov rdi, interrupt_descriptor_table + IRQ_0_MAP * IDT_ENTRY_SIZE
-mov [rdi], ax       ; Offset: Lower two bytes.
-shr rax, 16
-mov [rdi + OFFSET_16_TO_31], ax
-shr rax, 16
-mov [rdi + OFFSET_32_TO_63], eax
+call set_interrupt_service_routine
+
+mov rax, interrupt_service_routine_7
+mov rdi, interrupt_descriptor_table + IRQ_7_MAP * IDT_ENTRY_SIZE
+call set_interrupt_service_routine
 
 
 lgdt [GDT_descriptor]
@@ -183,6 +188,23 @@ done:
 jmp done
 
 
+set_interrupt_service_routine:
+; Arguments:
+; rax: Address of the interrupt service routine.
+; rdi: Address of the entry in the interrupt descriptor table (IDT).
+
+push rax
+
+mov [rdi], ax       ; Offset: Lower two bytes.
+shr rax, 16
+mov [rdi + OFFSET_16_TO_31], ax
+shr rax, 16
+mov [rdi + OFFSET_32_TO_63], eax
+
+pop rax
+ret
+
+
 divide_by_zero:
 %include "push_all.asm"
 mov byte [VIDEO_ADDRESS], 'Z'
@@ -199,6 +221,26 @@ mov byte [VIDEO_ADDRESS + 2 + 1], GREEN_ON_BLACK
 
 mov al, END_OF_INTERRUPT
 out PIC_MASTER_COMMAND, al
+
+%include "pop_all.asm"
+iretq
+
+
+interrupt_service_routine_7:
+%include "push_all.asm"
+
+; Check for spurious interrupt.
+mov al, OCW_3_FIXED_BIT | READ_REGISTER | IN_SERVICE_REGISTER
+out PIC_MASTER_COMMAND, al
+in al, PIC_MASTER_COMMAND
+
+test al, IRQ_7_MASK
+jz .done
+
+mov al, END_OF_INTERRUPT
+out PIC_MASTER_COMMAND, al
+
+.done:
 
 %include "pop_all.asm"
 iretq
