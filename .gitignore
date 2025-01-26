@@ -1,2 +1,7 @@
+kernel
 *.bin
 *.img
+*~
+*.o
+*.gch
+*.pch

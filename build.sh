@@ -23,6 +23,33 @@ set -x
 set -e
 set -u
 
+# Tools.
+asm=nasm
+cc=clang
+ld=ld.lld
+lint=splint
+indent=indent
+
+
+# Options.
+c_options='-ansi -Wall -Wextra -pedantic -ffreestanding -fno-stack-protector'
+c_options="$c_options"' -mcmodel=large -mno-red-zone'
+ld_options='-z noexecstack --nostdlib -T linker_script.ld'
+
+if [ "$lint" = splint ]
+then
+    lint_options='-predboolint'
+else
+    lint_options='-r'
+fi
+
+indent_options='-nut -kr'
+
+
+# Export variables used in subshell.
+export cc lint indent lint_options indent_options
+
+
 # Disk.
 cylinders=20
 heads=16
@@ -31,8 +58,9 @@ sectors=63
 mbr_sector=1
 loader_sectors=1
 # kernel_sectors=120
-asm=nasm
+
 bytes_per_block=512
+
 
 if grep -rEnI --exclude-dir=.git '.{80}'
 then
@@ -40,10 +68,13 @@ then
     exit 1
 fi
 
+
 find . -type d ! -path '*.git*'                -exec chmod 700 '{}' \;
 find . -type f ! -path '*.git*' ! -name '*.sh' -exec chmod 600 '{}' \;
 find . -type f ! -path '*.git*'   -name '*.sh' -exec chmod 700 '{}' \;
 
+
+shellcheck -e SC2086 build.sh
 
 rm -f boot.img.lock
 
@@ -52,7 +83,31 @@ dd if=/dev/zero of=boot.img bs="$bytes_per_block" \
 
 "$asm" -f bin -o mbr.bin mbr.asm
 "$asm" -f bin -o loader.bin loader.asm
-"$asm" -f bin -o kernel.bin kernel.asm
+
+"$asm" -f elf64 -o kernel_a.o kernel.asm
+"$asm" -f elf64 -o interrupt_a.o interrupt.asm
+
+
+find . -type f ! -path '*.git*' \( -name '*.c' -o -name '*.h' \) -exec sh -c '
+    set -x
+    set -e
+    set -u
+    fn="$1"
+    "$lint" $lint_options "$fn"
+    "$cc" -c "$fn"
+    "$indent" $indent_options "$fn"
+' sh '{}' \;
+
+
+"$cc" -c $c_options -o kernel_c.o kernel.c
+"$cc" -c $c_options -o interrupt_c.o interrupt.c
+
+
+"$ld" $ld_options -o kernel \
+kernel_a.o kernel_c.o interrupt_a.o interrupt_c.o
+
+objcopy -O binary kernel kernel.bin
+
 
 dd if=mbr.bin of=boot.img conv=notrunc
 
