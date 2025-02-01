@@ -15,17 +15,11 @@
  */
 
 
-#include "stddef.h"
-#include "stdint.h"
-
-#include "assert.h"
-#include "interrupt.h"
-#include "printf.h"
+#ifndef PRINTF_H
+#define PRINTF_H
 
 
-void kernel_main(void)
-{
-    init_idt();
+int printf(const char *format, ...);
 
-    printf("hello\n");
-}
+
+#endif

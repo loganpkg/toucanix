@@ -17,8 +17,10 @@
 
 #include "stddef.h"
 #include "stdint.h"
-#include "kernel.h"
+
+#include "asm_lib.h"
 #include "interrupt.h"
+#include "screen.h"
 
 
 #define CODE_SEGMENT_INDEX 1
@@ -172,26 +174,27 @@ void init_idt(void)
 
 void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
 {
-
     unsigned char *v;
-
     struct interrupt_stack_frame *isf_p;
 
     isf_p =
         (struct interrupt_stack_frame *) address_of_interrupt_stack_frame;
 
-    /* Print to screen */
-    v = (unsigned char *) VIDEO_ADDRESS;
-    ++*v;
-    *(v + 1) = (unsigned char) YELLOW_ON_MAGENTA;
-
-
     switch (isf_p->vector_number) {
     case 32:
         /* Timer */
+
+        v = (unsigned char *) VIDEO_ADDRESS;
+        ++*v;
+        *(v + 1) = (unsigned char) GREEN;
+
         acknowledge_interrupt();
         break;
     case 39:
+        v = (unsigned char *) VIDEO_ADDRESS + 2;
+        ++*v;
+        *(v + 1) = (unsigned char) YELLOW;
+
         if (is_spurious_interrupt())
             break;
         else
@@ -200,6 +203,66 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
         break;
 
     default:
+        v = (unsigned char *) VIDEO_ADDRESS + 4;
+        switch (isf_p->vector_number) {
+        case 0:
+            *v = '0';
+            break;
+        case 1:
+            *v = '1';
+            break;
+        case 2:
+            *v = '2';
+            break;
+        case 3:
+            *v = '3';
+            break;
+        case 4:
+            *v = '4';
+            break;
+        case 5:
+            *v = '5';
+            break;
+        case 6:
+            *v = '6';
+            break;
+        case 7:
+            *v = '7';
+            break;
+        case 8:
+            *v = '8';
+            break;
+        case 10:
+            *v = 'A';
+            break;
+        case 11:
+            *v = 'B';
+            break;
+        case 12:
+            *v = 'C';
+            break;
+        case 13:
+            *v = 'D';
+            break;
+        case 14:
+            *v = 'E';
+            break;
+        case 16:
+            *v = 'G';
+            break;
+        case 17:
+            *v = 'H';
+            break;
+        case 18:
+            *v = 'I';
+            break;
+        case 19:
+            *v = 'J';
+            break;
+        }
+
+        *(v + 1) = (unsigned char) RED;
+
         while (1);
     }
 }

@@ -1,5 +1,5 @@
 ;
-; Copyright (c) 2024 Logan Ryan McLintock
+; Copyright (c) 2024, 2025 Logan Ryan McLintock
 ;
 ; Permission to use, copy, modify, and/or distribute this software for any
 ; purpose with or without fee is hereby granted, provided that the above
@@ -42,17 +42,15 @@ KERNEL_SIZE equ NUM_OF_KERNEL_SECTORS_TO_READ * BYTES_PER_BLOCK
 KERNEL_ADDRESS equ 0x200000
 
 ; Colours.
-BLACK equ 0
 RED equ 4
-LIGHT_GREY equ 7
-LIGHT_GREEN equ 0xa
+
+; Light.
+GREY equ 7
+GREEN equ 0xa
+
 MAGENTA equ 5
 YELLOW equ 0xe
 
-; Colour combinations.
-GREY_ON_BLACK equ LIGHT_GREY
-GREEN_ON_BLACK equ LIGHT_GREY
-RED_ON_BLACK equ RED
 YELLOW_ON_MAGENTA equ MAGENTA << 4 | YELLOW
 
 

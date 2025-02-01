@@ -15,17 +15,15 @@
  */
 
 
-#include "stddef.h"
-#include "stdint.h"
+#ifndef ASM_LIB_H
+#define ASM_LIB_H
 
-#include "assert.h"
-#include "interrupt.h"
-#include "printf.h"
+#include <stddef.h>
 
 
-void kernel_main(void)
-{
-    init_idt();
+void *memmove(void *dest, const void *source, size_t s);
+void *memset(void *dest, int u, size_t s);
+int memcmp(const void *mem_a, const void *mem_b, size_t s);
 
-    printf("hello\n");
-}
+
+#endif

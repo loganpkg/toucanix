@@ -1,7 +1,7 @@
 #! /bin/sh
 
 #
-# Copyright (c) 2024 Logan Ryan McLintock
+# Copyright (c) 2024, 2025 Logan Ryan McLintock
 #
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -25,23 +25,37 @@ set -u
 
 # Tools.
 asm=nasm
+# asm=yasm
+
 cc=clang
+# cc=gcc
+
 ld=ld.lld
+#ld=ld
+
 lint=splint
 indent=indent
 
 
+
+
 # Options.
-c_options='-ansi -Wall -Wextra -pedantic -ffreestanding -fno-stack-protector'
+# -DNDEBUG
+c_options='-ansi -O0 -Wall -Wextra -pedantic'
+c_options="$c_options"' -ffreestanding -fno-stack-protector -fno-builtin'
 c_options="$c_options"' -mcmodel=large -mno-red-zone'
+c_options="$c_options"' -nostdlib -mno-sse -mno-avx'
+
 ld_options='-z noexecstack --nostdlib -T linker_script.ld'
+
 
 if [ "$lint" = splint ]
 then
-    lint_options='-predboolint'
+    lint_options='-predboolint +charintliteral -initallelements -globuse'
 else
     lint_options='-r'
 fi
+
 
 indent_options='-nut -kr'
 
@@ -87,24 +101,29 @@ dd if=/dev/zero of=boot.img bs="$bytes_per_block" \
 "$asm" -f elf64 -o kernel_a.o kernel.asm
 "$asm" -f elf64 -o interrupt_a.o interrupt.asm
 
+"$asm" -f elf64 -o asm_lib_a.o asm_lib.asm
+
 
 find . -type f ! -path '*.git*' \( -name '*.c' -o -name '*.h' \) -exec sh -c '
     set -x
     set -e
     set -u
     fn="$1"
-    "$lint" $lint_options "$fn"
     "$cc" -c "$fn"
     "$indent" $indent_options "$fn"
+    "$lint" $lint_options "$fn"
 ' sh '{}' \;
 
 
 "$cc" -c $c_options -o kernel_c.o kernel.c
 "$cc" -c $c_options -o interrupt_c.o interrupt.c
+"$cc" -c $c_options -o printf_c.o printf.c
+"$cc" -c $c_options -o screen_c.o screen.c
 
 
 "$ld" $ld_options -o kernel \
-kernel_a.o kernel_c.o interrupt_a.o interrupt_c.o
+kernel_a.o kernel_c.o interrupt_a.o interrupt_c.o asm_lib_a.o printf_c.o \
+screen_c.o
 
 objcopy -O binary kernel kernel.bin
 

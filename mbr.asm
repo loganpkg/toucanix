@@ -1,5 +1,5 @@
 ;
-; Copyright (c) 2024 Logan Ryan McLintock
+; Copyright (c) 2024, 2025 Logan Ryan McLintock
 ;
 ; Permission to use, copy, modify, and/or distribute this software for any
 ; purpose with or without fee is hereby granted, provided that the above
@@ -22,6 +22,10 @@
 BIOS_VIDEO_SERVICES equ 0x10
 SET_VIDEO_MODE equ 0
 TEXT_MODE_80_x_25_COLOUR equ 3
+
+SET_CURSOR_SHAPE equ 1
+INVISIBLE_CURSOR_BLINK equ 1 << 5
+BOTTOM_SCAN_LINE equ 15
 
 
 NUM_OF_PARTITION_ENTRIES equ 4
@@ -73,6 +77,12 @@ mov sp, MBR_ADDRESS
 
 mov ah, SET_VIDEO_MODE
 mov al, TEXT_MODE_80_x_25_COLOUR
+int BIOS_VIDEO_SERVICES
+
+
+mov ah, SET_CURSOR_SHAPE
+mov ch, INVISIBLE_CURSOR_BLINK
+mov cl, BOTTOM_SCAN_LINE
 int BIOS_VIDEO_SERVICES
 
 

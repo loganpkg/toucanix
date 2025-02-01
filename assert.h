@@ -15,25 +15,21 @@
  */
 
 
-#ifndef KERNEL_H
-#define KERNEL_H
+#include "stddef.h"
 
 
-#define VIDEO_ADDRESS 0xb8000
+#ifdef assert
+#undef assert
+#endif
 
-/* Colours */
-#define BLACK 0
-#define RED 4
-#define LIGHT_GREY 7
-#define LIGHT_GREEN 0xa
-#define MAGENTA 5
-#define YELLOW 0xe
-
-/* Colour combinations */
-#define GREY_ON_BLACK LIGHT_GREY
-#define GREEN_ON_BLACK LIGHT_GREY
-#define RED_ON_BLACK RED
-#define YELLOW_ON_MAGENTA (MAGENTA << 4 | YELLOW)
-
-
+#ifdef NDEBUG
+#define assert(expression) ((void) 0)
+#else
+#define assert(expression) do {                                     \
+        if (!(expression)) {                                        \
+            printf("%s: %lu: Assertion failed: " #expression "\n",  \
+                __FILE__, (unsigned long) __LINE__);                \
+            while (1);                                              \
+        }                                                           \
+    } while (0)
 #endif

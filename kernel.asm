@@ -1,5 +1,5 @@
 ;
-; Copyright (c) 2024 Logan Ryan McLintock
+; Copyright (c) 2025 Logan Ryan McLintock
 ;
 ; Permission to use, copy, modify, and/or distribute this software for any
 ; purpose with or without fee is hereby granted, provided that the above
@@ -190,20 +190,16 @@ push kernel_start
 retfq
 
 kernel_start:
-xor ax, ax
-mov ss, ax
+; xor ax, ax
+; mov ss, ax
+
 mov rsp, KERNEL_ADDRESS
 
-    inc byte [VIDEO_ADDRESS + 6]
-    mov byte [VIDEO_ADDRESS + 6 + 1], GREEN_ON_BLACK
-
 call kernel_main
-sti
+; sti
 
 done:
 
-    inc byte [VIDEO_ADDRESS + 10]
-    mov byte [VIDEO_ADDRESS + 10 + 1], RED_ON_BLACK
 
 hlt
 jmp done

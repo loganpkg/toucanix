@@ -15,17 +15,33 @@
  */
 
 
+#ifndef SCREEN_H
+#define SCREEN_H
+
+
 #include "stddef.h"
-#include "stdint.h"
-
-#include "assert.h"
-#include "interrupt.h"
-#include "printf.h"
 
 
-void kernel_main(void)
-{
-    init_idt();
+#define VIDEO_ADDRESS 0xb8000
 
-    printf("hello\n");
-}
+#define SCREEN_WIDTH 80
+#define SCREEN_HEIGHT 25
+
+
+/* Colours */
+#define RED 4
+
+/* Light */
+#define GREY 7
+#define GREEN 0xa
+
+#define MAGENTA 5
+#define YELLOW 0xe
+
+#define YELLOW_ON_MAGENTA (MAGENTA << 4 | YELLOW)
+
+
+void write_to_screen(char *buf, int s, unsigned char colour);
+
+
+#endif
