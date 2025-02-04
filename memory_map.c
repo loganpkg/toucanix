@@ -15,19 +15,39 @@
  */
 
 
-#include "stddef.h"
 #include "stdint.h"
 
-#include "assert.h"
-#include "interrupt.h"
-#include "memory_map.h"
 #include "printf.h"
-#include "screen.h"
 
 
-void kernel_main(void)
+#define MEMORY_MAP_ENTRY_COUNT_ADDRESS 0x9000
+#define DWORD_SIZE 4
+#define MEMORY_MAP_ADDRESS (MEMORY_MAP_ENTRY_COUNT_ADDRESS + DWORD_SIZE)
+
+
+struct address_range_descriptor {
+    uint64_t address;
+    uint64_t size;
+    uint32_t type;
+} __attribute__((packed));
+
+
+int print_memory_map(void)
 {
-    init_idt();
-    init_screen();
-    print_memory_map();
+    uint32_t i, num_entries;
+    struct address_range_descriptor *p;
+
+    num_entries = *(uint32_t *) MEMORY_MAP_ENTRY_COUNT_ADDRESS;
+    p = (struct address_range_descriptor *) MEMORY_MAP_ADDRESS;
+
+    for (i = 0; i < num_entries; ++i) {
+        if (printf
+            ("%lx : %lu : %lu\n", (unsigned long) p->address,
+             (unsigned long) p->size, (unsigned long) p->type) == -1)
+            return -1;
+
+        ++p;
+    }
+
+    return 0;
 }

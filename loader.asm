@@ -18,13 +18,16 @@
 
 %include "defs.asm"
 
-SYSTEM_MEMORY_MAP_ADDRESS equ 0x9000
+; System Memory Map.
+MEMORY_MAP_ENTRY_COUNT_ADDRESS equ 0x9000
+DWORD_SIZE equ 4
+MEMORY_MAP_ADDRESS equ MEMORY_MAP_ENTRY_COUNT_ADDRESS + DWORD_SIZE
+
 BIOS_SYSTEM_SERVICES equ 0x15
 SYSTEM_ADDRESS_MAP_FUNCTION_CODE equ 0xe820
 ; SMAP. PAMS in little-endian.
 SYSTEM_MAP_SIGNATURE equ 0x534D4150
 ADDRESS_RANGE_DESCRIPTOR_SIZE equ 20
-KERNEL_START_SECTOR equ MBR_SECTOR + NUM_OF_LOADER_SECTORS_TO_READ
 
 ; PM = Protected Mode.
 
@@ -78,23 +81,50 @@ USER_ACCESS equ 1 << 2
 GIB_SIZE equ 1 << 7
 
 
+; cpuid.
+GET_HIGHEST_EXTENDED_FUNCTION equ 0x8000_0000
+GET_EXTENDED_FEATURES         equ 0x8000_0001
+
+GIGABYTE_PAGE_SUPPORT equ 1 << 26
+LONG_MODE_SUPPORT     equ 1 << 29
+
+
+
+
 [BITS 16]
 [ORG LOADER_ADDRESS]
 
 ; Save the system memory map.
-mov edi, SYSTEM_MEMORY_MAP_ADDRESS
+mov dword [MEMORY_MAP_ENTRY_COUNT_ADDRESS], 0
+mov edi, MEMORY_MAP_ADDRESS
 xor ebx, ebx ; Continuation value
 mm_loop:
 mov ecx, ADDRESS_RANGE_DESCRIPTOR_SIZE
 mov edx, SYSTEM_MAP_SIGNATURE
 mov eax, SYSTEM_ADDRESS_MAP_FUNCTION_CODE
 int BIOS_SYSTEM_SERVICES
-jc error
+jc error_a
+inc dword [MEMORY_MAP_ENTRY_COUNT_ADDRESS]
 test ebx, ebx
 jz ok
 add edi, ADDRESS_RANGE_DESCRIPTOR_SIZE
 jmp mm_loop
 ok:
+
+
+mov eax, GET_HIGHEST_EXTENDED_FUNCTION
+cpuid
+cmp eax, GET_EXTENDED_FEATURES
+jb error_b
+
+mov eax, GET_EXTENDED_FEATURES
+cpuid
+test edx, LONG_MODE_SUPPORT
+jz error_c
+
+test edx, GIGABYTE_PAGE_SUPPORT
+jz error_d
+
 
 ; Load kernel.
 mov dl, DISK
@@ -103,18 +133,35 @@ mov ds, ax
 mov si, kernel_disk_address_packet
 mov ah, EXTENDED_READ_FUNCTION_CODE
 int BIOS_DISK_SERVICES
-jc error
+jc error_e
 jmp kernel_loaded
 
+
+error_a:
+mov si, memory_map_failed
+jmp error
+error_b:
+mov si, no_extended_features
+jmp error
+error_c:
+mov si, no_long_mode
+jmp error
+error_d:
+mov si, no_gigabyte_page
+jmp error
+error_e:
+mov si, kernel_load_failed
+jmp error
+
 error:
-mov ax, VIDEO_SEGMENT
-mov es, ax
-xor di, di
-mov byte [es:di], 'e'
-mov byte [es:di + 1], YELLOW_ON_MAGENTA
-done:
+xor ax, ax
+mov ds, ax
+mov bl, YELLOW_ON_MAGENTA
+call PRINT_FUNC
+.done:
 hlt
-jmp done
+jmp .done
+
 
 kernel_loaded:
 
@@ -149,21 +196,12 @@ xor eax, eax
 mov ecx, (PML4_SIZE + PDP_SIZE) / BYTES_PER_DOUBLE_WORD
 rep stosd
 
-jmp cool
-db 'ELEPHANT'
-cool:
-
 mov dword [PML4_ADDRESS], \
     PDP_ADDRESS | USER_ACCESS | READ_AND_WRITE | PAGE_PRESENT
 
 ; Identity map.
 mov dword [PDP_ADDRESS], \
     GIB_SIZE | USER_ACCESS | READ_AND_WRITE | PAGE_PRESENT
-
-jmp cool2
-db 'ELEPHANT'
-cool2:
-
 
 mov eax, PML4_ADDRESS
 mov cr3, eax
@@ -205,11 +243,18 @@ jmp KERNEL_ADDRESS
 
 ; Data.
 
+memory_map_failed: db 'ERROR: Failed to get memory map', NL, 0
+no_extended_features: db 'ERROR: No extended features available', NL, 0
+no_long_mode: db 'ERROR: No long mode support', NL, 0
+no_gigabyte_page: db 'ERROR: No gigabyte page support', NL, 0
+kernel_load_failed: db 'ERROR: Failed to load kernel', NL, 0
+
+
 ; For reading kernel into memory.
 kernel_disk_address_packet:
 db DISK_ADDRESS_PACKET_SIZE
 db 0
-dw NUM_OF_KERNEL_SECTORS_TO_READ
+dw KERNEL_SECTORS
 dw KERNEL_ORIGINAL_OFFSET, KERNEL_ORIGINAL_SEGMENT
 dq KERNEL_START_SECTOR
 

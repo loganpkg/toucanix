@@ -15,19 +15,12 @@
  */
 
 
-#include "stddef.h"
-#include "stdint.h"
-
-#include "assert.h"
-#include "interrupt.h"
-#include "memory_map.h"
-#include "printf.h"
-#include "screen.h"
+#ifndef MEMORY_MAP_H
+#define MEMORY_MAP_H
 
 
-void kernel_main(void)
-{
-    init_idt();
-    init_screen();
-    print_memory_map();
-}
+int print_memory_map(void);
+
+int printf(const char *format, ...);
+
+#endif

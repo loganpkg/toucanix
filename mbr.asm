@@ -33,7 +33,7 @@ NUM_OF_EMPTY_PARTITION_ENTRIES equ 3
 BYTES_PER_PARTITION_ENTRY equ 16
 BOOT_SIGNATURE equ 0xAA55
 BOOT_SIGNATURE_LEN equ 2
-BYTES_BEFORE_PARTITION_TABLE equ (BYTES_PER_BLOCK \
+BYTES_BEFORE_PARTITION_TABLE equ (BYTES_PER_SECTOR \
     - BYTES_PER_PARTITION_ENTRY * NUM_OF_PARTITION_ENTRIES \
     - BOOT_SIGNATURE_LEN)
 
@@ -57,7 +57,7 @@ BLANK_PARTITION_ENTRIES_SIZE equ \
 PA_RISC_LINUX_PARTITION_TYPE equ 0xf0
 LBA_FIRST_SECTOR_IN_PARTITION equ 1
 NUMBER_SECTORS_IN_PARTITION equ CYLINDERS * HEADS * SECTORS - MBR_SECTOR
-LOADER_START_SECTOR equ 1
+
 
 
 ; In Real mode: Intel 8086.
@@ -86,6 +86,23 @@ mov cl, BOTTOM_SCAN_LINE
 int BIOS_VIDEO_SERVICES
 
 
+; Load print into memory.
+mov dl, DISK
+xor ax, ax
+mov ds, ax
+mov si, print_disk_address_packet
+mov ah, EXTENDED_READ_FUNCTION_CODE
+int BIOS_DISK_SERVICES
+jc error_p
+
+
+xor ax, ax
+mov ds, ax
+mov si, welcome_str
+mov bl, GREEN
+call PRINT_FUNC
+
+
 ; Load the loader into memory.
 mov dl, DISK
 xor ax, ax
@@ -93,31 +110,54 @@ mov ds, ax
 mov si, loader_disk_address_packet
 mov ah, EXTENDED_READ_FUNCTION_CODE
 int BIOS_DISK_SERVICES
-jc error
+jc error_l
 
 jmp LOADER_ADDRESS
 
 
-error:
+error_p:
 mov ax, VIDEO_SEGMENT
 mov es, ax
 xor di, di
-mov byte [es:di], 'E'
+mov byte [es:di], 'P'
 mov byte [es:di + 1], YELLOW_ON_MAGENTA
-
-done:
+.done:
 hlt
-jmp done
+jmp .done
+
+
+error_l:
+xor ax, ax
+mov ds, ax
+mov si, loader_failed_str
+mov bl, YELLOW_ON_MAGENTA
+call PRINT_FUNC
+.done:
+hlt
+jmp .done
 
 
 ; Data.
+
+welcome_str: db 'Welcome to Toucanix', NL, 0
+loader_failed_str: db 'ERROR: Failed to load the loader', NL, 0
+
+
+; For reading print into memory.
+print_disk_address_packet:
+db DISK_ADDRESS_PACKET_SIZE
+db 0
+dw PRINT_SECTORS
+dd PRINT_ADDRESS
+dq PRINT_START_SECTOR
+
 
 
 ; For reading loader into memory.
 loader_disk_address_packet:
 db DISK_ADDRESS_PACKET_SIZE
 db 0
-dw NUM_OF_LOADER_SECTORS_TO_READ
+dw LOADER_SECTORS
 dd LOADER_ADDRESS
 dq LOADER_START_SECTOR
 

@@ -24,9 +24,6 @@
 
 #define VIDEO_ADDRESS 0xb8000
 
-#define SCREEN_WIDTH 80
-#define SCREEN_HEIGHT 25
-
 
 /* Colours */
 #define RED 4
@@ -40,7 +37,7 @@
 
 #define YELLOW_ON_MAGENTA (MAGENTA << 4 | YELLOW)
 
-
+void init_screen(void);
 void write_to_screen(char *buf, int s, unsigned char colour);
 
 
