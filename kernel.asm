@@ -18,6 +18,8 @@
 
 %include "defs.asm"
 
+KERNEL_STACK_LINEAR_ADDRESS equ KERNEL_LINEAR_ADDRESS
+
 
 ; Programmable Interval Timer (PIT).
 RATE_GENERATOR equ 2 << 1
@@ -66,12 +68,11 @@ TSS_SIZE equ 104
 
 TSS_AVAILABLE equ 9
 
-KERNEL_STACK_ADDRESS equ KERNEL_ADDRESS
-
 
 
 
 section .data
+
 global_descriptor_table:
 ; Base and limit are ignored (except for the TSS).
 dq NULL_SEGMENT
@@ -90,17 +91,17 @@ dw 0, 0
 db 0, PRESENT_BIT_SET | DESCRIPTOR_PRIVILEGE_LEVEL_USER \
     | TYPE_IS_CODE_OR_DATA_SEGMENT | CODE_READ_OR_DATA_WRITE_ACCESS, 0, 0
 
-; TSS entry. Double the usual GDT entry size.
+tss_entry: ; Double the usual GDT entry size.
 dw TSS_SIZE - 1 & 0xffff
-tss_base_a_word:
+.base_a_word:
 dw 0
-tss_base_b_byte:
+.base_b_byte:
 db 0
 db PRESENT_BIT_SET | TSS_AVAILABLE
 db TSS_SIZE - 1 >> 16
-tss_base_c_byte:
+.base_c_byte:
 db 0
-tss_base_d_dword:
+.base_d_dword:
 dd 0
 dd 0
 
@@ -116,7 +117,7 @@ dq global_descriptor_table
 
 task_state_segment:
 dd 0
-dq KERNEL_STACK_ADDRESS
+dq KERNEL_STACK_LINEAR_ADDRESS
 times TSS_SIZE - ($ - task_state_segment) - BYTES_PER_DOUBLE_WORD db 0
 dd TSS_SIZE
 
@@ -128,19 +129,29 @@ extern kernel_main
 global _start
 _start:
 
-
 ; Complete TSS entry in GDT.
-mov rax, task_state_segment
-mov word [tss_base_a_word], ax
+mov rax, qword task_state_segment
+
+mov rbx, qword tss_entry.base_a_word
+mov [rbx], ax
+
 shr rax, 16
-mov byte [tss_base_b_byte], al
-shr rax, 8
-mov byte [tss_base_c_byte], al
-shr rax, 8
-mov dword [tss_base_d_dword], eax
 
+mov rbx, qword tss_entry.base_b_byte
+mov [rbx], al
 
-lgdt [GDT_descriptor]
+shr rax, 8
+
+mov rbx, qword tss_entry.base_c_byte
+mov [rbx], al
+
+shr rax, 8
+
+mov rbx, qword tss_entry.base_d_dword
+mov [rbx], eax
+
+mov rax, qword GDT_descriptor
+lgdt [rax]
 mov ax, TSS_SELECTOR
 ltr ax
 
@@ -186,14 +197,15 @@ out PIC_SLAVE_DATA, al
 
 ; Set cs register.
 push CODE_SELECTOR
-push kernel_start
+mov rax, qword kernel_start
+push rax
 retfq
 
 kernel_start:
 ; xor ax, ax
 ; mov ss, ax
 
-mov rsp, KERNEL_ADDRESS
+mov rsp, KERNEL_STACK_LINEAR_ADDRESS
 
 call kernel_main
 ; sti

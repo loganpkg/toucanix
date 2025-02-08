@@ -16,13 +16,17 @@
 
 
 KERNEL_ADDRESS = 0x200000;
+KERNEL_SPACE_LINEAR_ADDRESS = 0xffff800000000000;
+KERNEL_LINEAR_ADDRESS = KERNEL_SPACE_LINEAR_ADDRESS + KERNEL_ADDRESS;
 WORD_SIZE = 16;
+
 
 ENTRY(_start)
 OUTPUT_FORMAT(elf64-x86-64)
 
 SECTIONS {
-.text KERNEL_ADDRESS : AT(KERNEL_ADDRESS) { *(.text); *(.text.*) }
+.text KERNEL_LINEAR_ADDRESS : AT(KERNEL_LINEAR_ADDRESS)
+    { *(.text); *(.text.*) }
 .rodata : { *(.rodata); *(.rodata.*) }
 .data : ALIGN(WORD_SIZE) { *(.data); *(.data.*) }
 .bss : { *(.bss); *(.bss.*) }
