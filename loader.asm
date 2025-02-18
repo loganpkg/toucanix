@@ -82,8 +82,7 @@ ZERO_ADDRESS equ 0
 PML4_ADDRESS equ 0x70000
 PML4_SIZE equ 0x1000
 PDPT_SIZE equ 0x1000
-PDPT_ZERO_ADDRESS equ PML4_ADDRESS + PML4_SIZE
-NUM_OF_PDPT equ 1
+PDPT_ADDRESS equ PML4_ADDRESS + PML4_SIZE
 
 PML4E_IDENTITY equ PML4_ADDRESS
 
@@ -92,8 +91,12 @@ LOWER_9_BITS equ 0x1ff
 BYTES_PER_PML4_ENTRY equ 8
 
 PML4E_KERNEL_SPACE equ PML4_ADDRESS \
-    + (KERNEL_SPACE_LINEAR_ADDRESS >> LOWER_BIT_OF_PML4_COMPONENT \
+    + (KERNEL_SPACE_VIRTUAL_ADDRESS >> LOWER_BIT_OF_PML4_COMPONENT \
         & LOWER_9_BITS) * BYTES_PER_PML4_ENTRY
+
+BYTES_PER_PDPT_ENTRY equ 8
+NUM_GIB_MAPPED equ PDPT_SIZE / BYTES_PER_PDPT_ENTRY
+EXPONENT_1_GIB equ 30
 
 PAGE_PRESENT    equ 1
 READ_AND_WRITE  equ 1 << 1
@@ -200,23 +203,24 @@ mov ss, ax
 mov esp, MBR_ADDRESS
 
 
-; Setup paging.
+setup_paging:
 ; Zero data.
 cld
 mov edi, PML4_ADDRESS
 xor eax, eax
-mov ecx, (PML4_SIZE + PDPT_SIZE * NUM_OF_PDPT) / BYTES_PER_DOUBLE_WORD
+mov ecx, (PML4_SIZE + PDPT_SIZE) / BYTES_PER_DOUBLE_WORD
 rep stosd
 
+
 mov dword [PML4E_IDENTITY], \
-    PDPT_ZERO_ADDRESS | READ_AND_WRITE | PAGE_PRESENT
+    PDPT_ADDRESS | READ_AND_WRITE | PAGE_PRESENT
 
 mov dword [PML4E_KERNEL_SPACE], \
-    PDPT_ZERO_ADDRESS | READ_AND_WRITE | PAGE_PRESENT
+    PDPT_ADDRESS | READ_AND_WRITE | PAGE_PRESENT
 
-mov dword [PDPT_ZERO_ADDRESS], \
+; First GiB only.
+mov dword [PDPT_ADDRESS], \
     ZERO_ADDRESS | GIB_SIZE | READ_AND_WRITE | PAGE_PRESENT
-
 
 mov eax, PML4_ADDRESS
 mov cr3, eax
@@ -246,6 +250,25 @@ long_mode_start:
 
 mov rsp, MBR_ADDRESS
 
+
+complete_paging:
+mov rcx, 1 ; First GiB has already been done.
+mov rdi, PDPT_ADDRESS + BYTES_PER_PDPT_ENTRY
+xor rsi, rsi
+
+.loop:
+cmp rcx, NUM_GIB_MAPPED
+jae .done
+mov rsi, rcx
+shl rsi, EXPONENT_1_GIB
+or rsi, GIB_SIZE | READ_AND_WRITE | PAGE_PRESENT
+mov [rdi], rsi
+add rdi, BYTES_PER_PDPT_ENTRY
+inc rcx
+jmp .loop
+.done:
+
+
 ; Relocate the kernel.
 cld
 mov rdi, KERNEL_ADDRESS
@@ -253,7 +276,7 @@ mov rsi, KERNEL_ORIGINAL_ADDRESS
 mov rcx, KERNEL_SIZE / 8
 rep movsq
 
-mov rax, KERNEL_LINEAR_ADDRESS
+mov rax, KERNEL_VIRTUAL_ADDRESS
 jmp rax
 
 

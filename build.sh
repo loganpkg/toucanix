@@ -33,6 +33,8 @@ cc=clang
 ld=ld.lld
 # ld=ld
 
+objcopy=objcopy
+
 lint=splint
 indent=indent
 
@@ -48,10 +50,16 @@ c_options="$c_options"' -nostdlib -mno-sse -mno-avx'
 
 ld_options='-z noexecstack --nostdlib -T linker_script.ld'
 
+if [ "$ld" = ld ]
+then
+    ld_options='--no-warn-rwx-segments '"$ld_options"
+fi
+
 
 if [ "$lint" = splint ]
 then
     lint_options='-predboolint +charintliteral -initallelements -globuse'
+    lint_options="$lint_options"' -mustfreeonly -temptrans'
 else
     lint_options='-r'
 fi
@@ -120,14 +128,14 @@ find . -type f ! -path '*.git*' \( -name '*.c' -o -name '*.h' \) -exec sh -c '
 "$cc" -c $c_options -o interrupt_c.o interrupt.c
 "$cc" -c $c_options -o printf_c.o printf.c
 "$cc" -c $c_options -o screen_c.o screen.c
-"$cc" -c $c_options -o memory_map_c.o memory_map.c
+"$cc" -c $c_options -o memory_c.o memory.c
 
 
 "$ld" $ld_options -o kernel \
 kernel_a.o kernel_c.o interrupt_a.o interrupt_c.o asm_lib_a.o printf_c.o \
-screen_c.o memory_map_c.o
+screen_c.o memory_c.o
 
-objcopy -O binary kernel kernel.bin
+"$objcopy" -O binary kernel kernel.bin
 
 
 dd if=mbr.bin of=boot.img conv=notrunc

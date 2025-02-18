@@ -18,9 +18,7 @@
 #ifndef MEMORY_MAP_H
 #define MEMORY_MAP_H
 
-
 int print_memory_map(void);
-
-int printf(const char *format, ...);
+int collect_free_memory(void);
 
 #endif

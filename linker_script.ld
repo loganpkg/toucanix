@@ -16,18 +16,26 @@
 
 
 KERNEL_ADDRESS = 0x200000;
-KERNEL_SPACE_LINEAR_ADDRESS = 0xffff800000000000;
-KERNEL_LINEAR_ADDRESS = KERNEL_SPACE_LINEAR_ADDRESS + KERNEL_ADDRESS;
-WORD_SIZE = 16;
-
+KERNEL_SPACE_VIRTUAL_ADDRESS = 0xffff800000000000;
+KERNEL_VIRTUAL_ADDRESS = KERNEL_SPACE_VIRTUAL_ADDRESS + KERNEL_ADDRESS;
+ALIGN_BYTES = 16;
 
 ENTRY(_start)
 OUTPUT_FORMAT(elf64-x86-64)
 
 SECTIONS {
-.text KERNEL_LINEAR_ADDRESS : AT(KERNEL_LINEAR_ADDRESS)
-    { *(.text); *(.text.*) }
-.rodata : { *(.rodata); *(.rodata.*) }
-.data : ALIGN(WORD_SIZE) { *(.data); *(.data.*) }
-.bss : { *(.bss); *(.bss.*) }
+    /* Dot . is the output location counter. */
+    . = KERNEL_VIRTUAL_ADDRESS;
+
+    .text : { *(.text .text.*) }
+    PROVIDE(etext = .);
+
+    .rodata : { *(.rodata .rodata.*) }
+
+     . = ALIGN(ALIGN_BYTES);
+    .data : { *(.data .data.*) }
+    PROVIDE(edata = .);
+
+    .bss : { *(.bss .bss.*) }
+    PROVIDE(end = .);
 }

@@ -20,14 +20,21 @@
 
 #include "assert.h"
 #include "interrupt.h"
-#include "memory_map.h"
+#include "memory.h"
 #include "printf.h"
 #include "screen.h"
 
+extern char etext, edata, end;
 
 void kernel_main(void)
 {
     init_idt();
     init_screen();
     print_memory_map();
+    printf("etext: %lx\n", (unsigned long) &etext);
+    printf("edata: %lx\n", (unsigned long) &edata);
+    printf("end: %lx\n", (unsigned long) &end);
+
+    collect_free_memory();
+
 }

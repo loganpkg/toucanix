@@ -18,7 +18,7 @@
 
 %include "defs.asm"
 
-KERNEL_STACK_LINEAR_ADDRESS equ KERNEL_LINEAR_ADDRESS
+KERNEL_STACK_VIRTUAL_ADDRESS equ KERNEL_VIRTUAL_ADDRESS
 
 
 ; Programmable Interval Timer (PIT).
@@ -117,7 +117,7 @@ dq global_descriptor_table
 
 task_state_segment:
 dd 0
-dq KERNEL_STACK_LINEAR_ADDRESS
+dq KERNEL_STACK_VIRTUAL_ADDRESS
 times TSS_SIZE - ($ - task_state_segment) - BYTES_PER_DOUBLE_WORD db 0
 dd TSS_SIZE
 
@@ -205,7 +205,7 @@ kernel_start:
 ; xor ax, ax
 ; mov ss, ax
 
-mov rsp, KERNEL_STACK_LINEAR_ADDRESS
+mov rsp, KERNEL_STACK_VIRTUAL_ADDRESS
 
 call kernel_main
 ; sti
