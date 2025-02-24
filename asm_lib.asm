@@ -16,11 +16,13 @@
 
 
 section .text
+global memcpy
 global memmove
 global memset
 global memcmp
 
 
+memcpy:
 memmove:
 ; Argument 1: rdi: Destination address.
 ; Argument 2: rsi: Source address.
@@ -61,7 +63,7 @@ ret
 
 memset:
 ; Argument 1: rdi: Destination address.
-; Argument 2: rsi: int cast as an unsigned char (used to fill in the memory).
+; Argument 2: rsi: Byte used to fill in the memory (passed as an integer).
 ; Argument 3: rdx: Size in bytes.
 ; Returns: rax: (Original) Destination address.
 cld
@@ -74,13 +76,34 @@ ret
 
 
 memcmp:
-; Argument 1: rdi: Memory 1.
-; Argument 2: rsi: Memory 2.
+; Argument 1: rdi: Memory A (mem_a).
+; Argument 2: rsi: Memory B (mem_b).
 ; Argument 3: rdx: Size in bytes.
-; Returns: rax: 0 = Equal. 1 = Not equal.
+; Returns: rax:  0 = Equal.
+;               -1 = First differing byte has mem_a before mem_b.
+;                1 = First differing byte has mem_a after mem_b.
+
 cld
-xor rax, rax
+
+; Swap destination and source, as cmpsb performs rsi - rdi,
+; and need to do mem_a - mem_b.
+mov r8, rdi
+mov rdi, rsi
+mov rsi, r8
+
 mov rcx, rdx
 repe cmpsb
-setne al
+jb .below
+ja .above
+
+; Equal.
+xor rax, rax
+ret
+
+.below:
+mov rax, -1
+ret
+
+.above:
+mov rax, 1
 ret

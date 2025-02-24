@@ -17,6 +17,7 @@
 
 #include "stdint.h"
 
+#include "address.h"
 #include "asm_lib.h"
 #include "screen.h"
 
@@ -35,13 +36,13 @@
 #define COL (PRINT_ADDRESS + 4)
 
 
-#define text_ptr(r, c) ((char *) VIDEO_ADDRESS + (r) * BYTES_PER_LINE \
+#define text_ptr(r, c) ((char *) VIDEO_VIRTUAL_ADDRESS + (r) * BYTES_PER_LINE \
     + (c) * BYTES_PER_SCREEN_CHAR)
 
-#define colour_ptr(r, c) ((unsigned char *) text_ptr((r), (c)) + 1)
+#define colour_ptr(r, c) ((uint8_t *) text_ptr((r), (c)) + 1)
 
 
-static size_t row = 0, col = 0;
+static uint64_t row = 0, col = 0;
 
 
 void init_screen(void)
@@ -51,7 +52,7 @@ void init_screen(void)
 }
 
 
-void write_to_screen(char *buf, int s, unsigned char colour)
+void write_to_screen(char *buf, int s, uint8_t colour)
 {
     int i;
     char ch;
@@ -64,13 +65,14 @@ void write_to_screen(char *buf, int s, unsigned char colour)
         }
         if (row == SCREEN_HEIGHT) {
             /* Scroll up a line. */
-            memmove((char *) VIDEO_ADDRESS,
-                    (char *) VIDEO_ADDRESS + BYTES_PER_LINE,
+            memmove((void *) VIDEO_VIRTUAL_ADDRESS,
+                    (const void *) (VIDEO_VIRTUAL_ADDRESS +
+                                    BYTES_PER_LINE),
                     (SCREEN_HEIGHT - 1) * BYTES_PER_LINE);
             --row;
             /* Clear last row. */
-            memset((char *) VIDEO_ADDRESS +
-                   (SCREEN_HEIGHT - 1) * BYTES_PER_LINE, '\0',
+            memset((void *) (VIDEO_VIRTUAL_ADDRESS
+                             + (SCREEN_HEIGHT - 1) * BYTES_PER_LINE), 0,
                    BYTES_PER_LINE);
         }
         ch = *(buf + i);

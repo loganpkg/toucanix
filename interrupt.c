@@ -15,9 +15,7 @@
  */
 
 
-#include "stddef.h"
-#include "stdint.h"
-
+#include "address.h"
 #include "asm_lib.h"
 #include "interrupt.h"
 #include "screen.h"
@@ -174,7 +172,7 @@ void init_idt(void)
 
 void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
 {
-    unsigned char *v;
+    char *v;
     struct interrupt_stack_frame *isf_p;
 
     isf_p =
@@ -184,16 +182,16 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
     case 32:
         /* Timer */
 
-        v = (unsigned char *) VIDEO_ADDRESS;
+        v = (char *) VIDEO_VIRTUAL_ADDRESS;
         ++*v;
-        *(v + 1) = (unsigned char) GREEN;
+        *((uint8_t *) v + 1) = GREEN;
 
         acknowledge_interrupt();
         break;
     case 39:
-        v = (unsigned char *) VIDEO_ADDRESS + 2;
+        v = (char *) VIDEO_VIRTUAL_ADDRESS + 2;
         ++*v;
-        *(v + 1) = (unsigned char) YELLOW;
+        *((uint8_t *) v + 1) = YELLOW;
 
         if (is_spurious_interrupt())
             break;
@@ -203,7 +201,7 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
         break;
 
     default:
-        v = (unsigned char *) VIDEO_ADDRESS + 4;
+        v = (char *) VIDEO_VIRTUAL_ADDRESS + 4;
         switch (isf_p->vector_number) {
         case 0:
             *v = '0';
@@ -261,7 +259,7 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
             break;
         }
 
-        *(v + 1) = (unsigned char) RED;
+        *((uint8_t *) v + 1) = RED;
 
         while (1);
     }

@@ -14,17 +14,17 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "stddef.h"
 #include "stdint.h"
 
+#include "address.h"
+#include "asm_lib.h"
+#include "assert.h"
 #include "printf.h"
 
 
 #define MEMORY_MAP_ENTRY_COUNT_ADDRESS 0x9000
 #define DWORD_SIZE 4
 #define MEMORY_MAP_ADDRESS (MEMORY_MAP_ENTRY_COUNT_ADDRESS + DWORD_SIZE)
-
-#define KERNEL_SPACE_VIRTUAL_ADDRESS 0xffff800000000000
 
 #define PDPT_SIZE 0x1000
 #define BYTES_PER_PDPT_ENTRY 8
@@ -48,13 +48,12 @@
 /* Truncates an address down to the start of its page. */
 #define truncate_to_page(a) ((a) >> EXPONENT_2_MIB << EXPONENT_2_MIB)
 
+
 /* Converts a physical address to a virtual address. */
 #define phy_to_virt(a) ((a) + KERNEL_SPACE_VIRTUAL_ADDRESS)
 
 /* Converts a virtual address to a physical address. */
 #define virt_to_phy(a) ((a) - KERNEL_SPACE_VIRTUAL_ADDRESS)
-
-
 
 
 extern char end;
@@ -67,12 +66,7 @@ struct address_range_descriptor {
 } __attribute__((packed));
 
 
-struct physical_page {
-    /*@null@ */ struct physical_page *next;
-};
-
-static struct physical_page head = { NULL };
-
+static uint64_t head = 0;
 static uint64_t num_free_pages = 0;
 
 
@@ -85,9 +79,8 @@ int print_memory_map(void)
     p = (struct address_range_descriptor *) MEMORY_MAP_ADDRESS;
 
     for (i = 0; i < num_entries; ++i) {
-        if (printf
-            ("%lx : %lu : %lu\n", (unsigned long) p->address,
-             (unsigned long) p->size, (unsigned long) p->type) == -1)
+        if (printf("%lx : %lu : %lu\n", (unsigned long) p->address,
+            (unsigned long) p->size, (unsigned long) p->type) == -1)
             return -1;
 
         ++p;
@@ -97,28 +90,46 @@ int print_memory_map(void)
 }
 
 
-static void free_physical_page(struct physical_page
-                               *start_physical_page)
+static void free_physical_page(uint64_t start_physical_page)
 {
-    start_physical_page->next = head.next;
-    head.next = start_physical_page;
+    /*
+     * Page starting at physical address zero cannot be used,
+     * as it clashes with the indication of no more memory.
+     */
+    if (start_physical_page == 0)
+          return;
+
+    *((uint64_t *) start_physical_page) = head;
+    head = start_physical_page;
     ++num_free_pages;
 }
 
 
-static /*@null@ */ void *allocate_physical_page(void)
+static uint64_t allocate_physical_page(void)
 {
     /* Returns the physical address of the start of the page. */
-    struct physical_page *t;
-    t = head.next;
+    uint64_t head_next, head_next_next;
 
-    if (t == NULL)
-        return NULL;
+    if (head == 0 || num_free_pages == 0)
+        return 0;               /* No more physical memory. */
 
-    /* Bypass. */
-    head.next = t->next;
+    head_next = *(uint64_t *) head;
 
-    return t;
+    if (head_next) {
+        head_next_next = *(uint64_t *) head_next;
+
+        /* Bypass. */
+        head = head_next_next;
+    } else {
+        head = 0;
+    }
+
+    /* Clear page. */
+    memset((void *) head_next, 0, (uint64_t) PAGE_SIZE);
+
+    --num_free_pages;
+
+    return head_next;
 }
 
 
@@ -148,7 +159,7 @@ static void free_virtual_range(uint64_t start_virtual_address,
 
     for (i = start_virtual_page; i < end_virtual_page_exclusive;
          i += PAGE_SIZE)
-        free_physical_page((struct physical_page *) virt_to_phy(i));
+        free_physical_page(virt_to_phy(i));
 }
 
 
@@ -167,10 +178,9 @@ int collect_free_memory(void)
         ++p;
     }
 
-    if (printf
-        ("Number of free pages: %lu\n",
-         (unsigned long) num_free_pages) == -1)
-        return -1;
+    if (printf("Number of free pages: %lu\n", (unsigned long) num_free_pages)
+        == -1)
+            return -1;
 
     return 0;
 }

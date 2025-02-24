@@ -15,21 +15,12 @@
  */
 
 
-#include "printf.h"
+#ifndef ADDRESS_H
+#define ADDRESS_H
 
+#define KERNEL_SPACE_VIRTUAL_ADDRESS 0xffff800000000000
 
-#ifdef assert
-#undef assert
-#endif
+#define VIDEO_ADDRESS 0xb8000
+#define VIDEO_VIRTUAL_ADDRESS (KERNEL_SPACE_VIRTUAL_ADDRESS + VIDEO_ADDRESS)
 
-#ifdef NDEBUG
-#define assert(expression) ((void) 0)
-#else
-#define assert(expression) do {                                             \
-        if (!(expression)) {                                                \
-            (void) printf("%s: %lu: Assertion failed: " #expression "\n",   \
-                __FILE__, (unsigned long) __LINE__);                        \
-            while (1);                                                      \
-        }                                                                   \
-    } while (0)
 #endif

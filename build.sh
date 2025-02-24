@@ -36,9 +36,8 @@ ld=ld.lld
 objcopy=objcopy
 
 lint=splint
+
 indent=indent
-
-
 
 
 # Options.
@@ -56,20 +55,15 @@ then
 fi
 
 
-if [ "$lint" = splint ]
-then
-    lint_options='-predboolint +charintliteral -initallelements -globuse'
-    lint_options="$lint_options"' -mustfreeonly -temptrans'
-else
-    lint_options='-r'
-fi
+lint_options='-predboolint +charintliteral -initallelements -globuse'
+lint_options="$lint_options"' -mustfreeonly -temptrans -usedef -compdef'
 
 
 indent_options='-nut -kr'
 
 
 # Export variables used in subshell.
-export cc lint indent lint_options indent_options
+export cc lint indent c_options lint_options indent_options
 
 
 # Disk.
@@ -92,14 +86,25 @@ then
 fi
 
 
+# Fix permissions.
 find . -type d ! -path '*.git*'                -exec chmod 700 '{}' \;
 find . -type f ! -path '*.git*' ! -name '*.sh' -exec chmod 600 '{}' \;
 find . -type f ! -path '*.git*'   -name '*.sh' -exec chmod 700 '{}' \;
 
 
+# Clean up.
+find . -type f ! -path '*.git*' \
+    \( -name 'kernel'           \
+    -o -name 'boot.img.lock'    \
+    -o -name '*~'               \
+    -o -name '*.o'              \
+    -o -name '*.gch'            \
+    -o -name '*.pch'            \
+    \) -delete
+
+
 shellcheck -e SC2086 build.sh
 
-rm -f boot.img.lock
 
 dd if=/dev/zero of=boot.img bs="$bytes_per_block" \
     count="$((cylinders * heads * sectors))"
@@ -114,13 +119,12 @@ dd if=/dev/zero of=boot.img bs="$bytes_per_block" \
 
 
 find . -type f ! -path '*.git*' \( -name '*.c' -o -name '*.h' \) -exec sh -c '
-    set -x
     set -e
     set -u
     fn="$1"
-    "$cc" -c "$fn"
-    "$indent" $indent_options "$fn"
+    "$cc" -c $c_options "$fn" 2>&1 > /dev/null
     "$lint" $lint_options "$fn"
+    "$indent" $indent_options "$fn"
 ' sh '{}' \;
 
 

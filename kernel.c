@@ -15,10 +15,8 @@
  */
 
 
-#include "stddef.h"
-#include "stdint.h"
-
 #include "assert.h"
+#include "asm_lib.h"
 #include "interrupt.h"
 #include "memory.h"
 #include "printf.h"
@@ -30,11 +28,13 @@ void kernel_main(void)
 {
     init_idt();
     init_screen();
-    print_memory_map();
+    (void) print_memory_map();
     printf("etext: %lx\n", (unsigned long) &etext);
     printf("edata: %lx\n", (unsigned long) &edata);
     printf("end: %lx\n", (unsigned long) &end);
 
-    collect_free_memory();
+    (void) collect_free_memory();
 
+    (void) printf("memcmp: %lx\n",
+                  (unsigned long) memcmp("abz", "abc", 4));
 }

@@ -18,11 +18,13 @@
 #ifndef ASM_LIB_H
 #define ASM_LIB_H
 
-#include <stddef.h>
+#include "stddef.h"
 
-
+void *memcpy(void *dest, const void *source, size_t s);
 void *memmove(void *dest, const void *source, size_t s);
-void *memset(void *dest, int u, size_t s);
+
+void *memset(void *dest, int c, size_t s);
+
 int memcmp(const void *mem_a, const void *mem_b, size_t s);
 
 

@@ -20,8 +20,9 @@
 
 #include "screen.h"
 
-
+/* Must be <= INT_MAX. */
 #define BUF_SIZE 1024
+
 #define U64_MAX_DIGITS 20
 #define U64_MAX_HEX 18
 
@@ -45,7 +46,7 @@ static int print_str(char *buf, int *used, const char *str)
 
 static int print_unsigned(char *buf, int *used, uint64_t x)
 {
-    char n[U64_MAX_DIGITS] = { '\0' };
+    char n[U64_MAX_DIGITS];
     int ud, i = 0;
 
     do {
@@ -71,7 +72,7 @@ static int print_unsigned(char *buf, int *used, uint64_t x)
 static int print_hex(char *buf, int *used, uint64_t x)
 {
     char *hex_map = "0123456789abcdef";
-    char n[U64_MAX_HEX] = { '\0' };
+    char n[U64_MAX_HEX];
     int ud, i = 0;
 
     do {
@@ -101,7 +102,7 @@ static int print_hex(char *buf, int *used, uint64_t x)
 int printf(const char *format, ...)
 {
     va_list a;
-    char buf[BUF_SIZE] = { '\0' };
+    char buf[BUF_SIZE];
     int used;
 
     char ch;
@@ -160,7 +161,7 @@ int printf(const char *format, ...)
 
     va_end(a);
 
-    write_to_screen(buf, used, (unsigned char) GREEN);
+    write_to_screen(buf, used, GREEN);
 
     return used;
 }
