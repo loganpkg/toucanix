@@ -129,6 +129,13 @@ extern kernel_main
 global _start
 _start:
 
+mov rsp, KERNEL_STACK_VIRTUAL_ADDRESS
+
+; Remove identity mapping.
+mov rax, PML4E_IDENTITY_VIRTUAL_ADDRESS
+mov qword [rax], 0
+
+
 ; Complete TSS entry in GDT.
 mov rax, qword task_state_segment
 
@@ -201,17 +208,10 @@ mov rax, qword kernel_start
 push rax
 retfq
 
+
 kernel_start:
-; xor ax, ax
-; mov ss, ax
-
-mov rsp, KERNEL_STACK_VIRTUAL_ADDRESS
-
 call kernel_main
-; sti
 
-done:
-
-
+.done:
 hlt
-jmp done
+jmp .done

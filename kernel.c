@@ -15,6 +15,7 @@
  */
 
 
+#include "address.h"
 #include "assert.h"
 #include "asm_lib.h"
 #include "interrupt.h"
@@ -26,6 +27,8 @@ extern char etext, edata, end;
 
 void kernel_main(void)
 {
+    int r;
+
     init_idt();
     init_screen();
     (void) print_memory_map();
@@ -33,8 +36,19 @@ void kernel_main(void)
     printf("edata: %lx\n", (unsigned long) &edata);
     printf("end: %lx\n", (unsigned long) &end);
 
+
+
     (void) collect_free_memory();
 
-    (void) printf("memcmp: %lx\n",
-                  (unsigned long) memcmp("abz", "abc", 4));
+    (void) printf("memcmp: %lx\n", (unsigned long) memcmp("abz", "abc", 4));
+
+
+
+
+    r = init_kernel_virtual_memory_space();
+    assert(r == 0);
+
+
+
+    (void) printf("cool\n");
 }

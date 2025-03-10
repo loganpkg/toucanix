@@ -175,8 +175,7 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
     char *v;
     struct interrupt_stack_frame *isf_p;
 
-    isf_p =
-        (struct interrupt_stack_frame *) address_of_interrupt_stack_frame;
+    isf_p = (struct interrupt_stack_frame *) address_of_interrupt_stack_frame;
 
     switch (isf_p->vector_number) {
     case 32:

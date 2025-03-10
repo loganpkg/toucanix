@@ -79,12 +79,9 @@ PAGING equ 1 << 31
 ; PML4 = Page Map Level 4 (table).
 ; PDPT = Page Directory Pointer Table.
 ZERO_ADDRESS equ 0
-PML4_ADDRESS equ 0x70000
 PML4_SIZE equ 0x1000
 PDPT_SIZE equ 0x1000
 PDPT_ADDRESS equ PML4_ADDRESS + PML4_SIZE
-
-PML4E_IDENTITY equ PML4_ADDRESS
 
 LOWER_BIT_OF_PML4_COMPONENT equ 39
 LOWER_9_BITS equ 0x1ff
@@ -101,7 +98,8 @@ EXPONENT_1_GIB equ 30
 PAGE_PRESENT    equ 1
 READ_AND_WRITE  equ 1 << 1
 USER_ACCESS     equ 1 << 2
-GIB_SIZE        equ 1 << 7
+; Page Size attribute.
+PS              equ 1 << 7
 
 
 
@@ -220,7 +218,7 @@ mov dword [PML4E_KERNEL_SPACE], \
 
 ; First GiB only.
 mov dword [PDPT_ADDRESS], \
-    ZERO_ADDRESS | GIB_SIZE | READ_AND_WRITE | PAGE_PRESENT
+    ZERO_ADDRESS | PS | READ_AND_WRITE | PAGE_PRESENT
 
 mov eax, PML4_ADDRESS
 mov cr3, eax
@@ -261,7 +259,7 @@ cmp rcx, NUM_GIB_MAPPED
 jae .done
 mov rsi, rcx
 shl rsi, EXPONENT_1_GIB
-or rsi, GIB_SIZE | READ_AND_WRITE | PAGE_PRESENT
+or rsi, PS | READ_AND_WRITE | PAGE_PRESENT
 mov [rdi], rsi
 add rdi, BYTES_PER_PDPT_ENTRY
 inc rcx
