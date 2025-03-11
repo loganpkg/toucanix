@@ -47,6 +47,8 @@
 #define PS              1 << 7
 
 
+#define NO_ALLOCATE_DATA 0
+
 /*
  * Aligns up to the next page if not already aligned. The minus one is so
  * that an already aligned address will not move up to the next page.
@@ -79,7 +81,7 @@ struct pa_range_descriptor {
 
 static uint64_t head = 0;
 static uint64_t num_free_pages = 0;
-
+static uint64_t max_start_page_pa = 0;
 
 
 
@@ -115,6 +117,9 @@ static void free_page_pa(uint64_t start_page_pa)
     *(uint64_t *) pa_to_va(start_page_pa) = head;
     head = start_page_pa;
     ++num_free_pages;
+
+    if (start_page_pa > max_start_page_pa)
+        max_start_page_pa = start_page_pa;
 }
 
 
@@ -187,6 +192,11 @@ int collect_free_memory(void)
 
     if (printf("Number of free pages: %lu\n", (unsigned long) num_free_pages)
         == -1)
+        return -1;
+
+    if (printf
+        ("Max physical memory exclusive: %lx\n",
+         max_start_page_pa + PAGE_SIZE) == -1)
         return -1;
 
     return 0;
@@ -276,6 +286,7 @@ static int map_range(uint64_t pml4_pa, uint64_t start_va, uint64_t end_va_excl,
     return 0;
 }
 
+
 int init_kernel_virtual_memory_space(void)
 {
     uint64_t pml4_pa;
@@ -285,13 +296,8 @@ int init_kernel_virtual_memory_space(void)
         return -1;
 
     if (map_range
-        (pml4_pa, KERNEL_VA, (uint64_t) & end,
-         (uint32_t) (READ_AND_WRITE | PAGE_PRESENT), 0))
-        return -1;
-
-    if (map_range
-        (pml4_pa, VIDEO_VA, (uint64_t) (VIDEO_VA + PAGE_SIZE),
-         (uint32_t) (READ_AND_WRITE | PAGE_PRESENT), 0))
+        (pml4_pa, KERNEL_SPACE_VA, pa_to_va(max_start_page_pa + PAGE_SIZE),
+         (uint32_t) (READ_AND_WRITE | PAGE_PRESENT), NO_ALLOCATE_DATA))
         return -1;
 
     switch_pml4_pa(pml4_pa);
