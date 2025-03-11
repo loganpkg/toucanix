@@ -18,16 +18,23 @@
 #ifndef ADDRESS_H
 #define ADDRESS_H
 
-#define KERNEL_ADDRESS 0x200000
-#define KERNEL_SPACE_VIRTUAL_ADDRESS 0xffff800000000000
-#define KERNEL_VIRTUAL_ADDRESS (KERNEL_SPACE_VIRTUAL_ADDRESS + KERNEL_ADDRESS)
 
-#define VIDEO_ADDRESS 0xb8000
-#define VIDEO_VIRTUAL_ADDRESS (KERNEL_SPACE_VIRTUAL_ADDRESS + VIDEO_ADDRESS)
+/* Converts a physical address to a virtual address. */
+#define pa_to_va(a) ((a) + KERNEL_SPACE_VA)
 
-#define PML4_ADDRESS 0x70000
-#define PML4_VIRTUAL_ADDRESS (KERNEL_SPACE_VIRTUAL_ADDRESS + PML4_ADDRESS)
-#define PML4E_VIRTUAL_IDENTITY PML4_VIRTUAL_ADDRESS
+/* Converts a virtual address to a physical address. */
+#define va_to_pa(a) ((a) - KERNEL_SPACE_VA)
+
+
+#define KERNEL_PA 0x200000
+#define KERNEL_SPACE_VA 0xffff800000000000
+#define KERNEL_VA pa_to_va(KERNEL_PA)
+
+#define VIDEO_PA 0xb8000
+#define VIDEO_VA pa_to_va(VIDEO_PA)
+
+#define PML4_PA 0x70000
+#define PML4_VA pa_to_va(PML4_PA)
 
 
 #endif

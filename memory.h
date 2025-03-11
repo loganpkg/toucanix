@@ -21,10 +21,10 @@
 #include "stdint.h"
 
 /* From memory.asm file. */
-void switch_pml4(uint64_t new_pml4_start_physical_address);
+void switch_pml4_pa(uint64_t new_pml4_start_pa);
 
 /* From memory.c file. */
-int print_memory_map(void);
+int print_memory_map_pa(void);
 int collect_free_memory(void);
 int init_kernel_virtual_memory_space(void);
 

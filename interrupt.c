@@ -181,14 +181,14 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
     case 32:
         /* Timer */
 
-        v = (char *) VIDEO_VIRTUAL_ADDRESS;
+        v = (char *) VIDEO_VA;
         ++*v;
         *((uint8_t *) v + 1) = GREEN;
 
         acknowledge_interrupt();
         break;
     case 39:
-        v = (char *) VIDEO_VIRTUAL_ADDRESS + 2;
+        v = (char *) VIDEO_VA + 2;
         ++*v;
         *((uint8_t *) v + 1) = YELLOW;
 
@@ -200,7 +200,7 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
         break;
 
     default:
-        v = (char *) VIDEO_VIRTUAL_ADDRESS + 4;
+        v = (char *) VIDEO_VA + 4;
         switch (isf_p->vector_number) {
         case 0:
             *v = '0';

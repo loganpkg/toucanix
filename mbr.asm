@@ -62,7 +62,7 @@ NUMBER_SECTORS_IN_PARTITION equ CYLINDERS * HEADS * SECTORS - MBR_SECTOR
 
 ; In Real mode: Intel 8086.
 [BITS 16]
-[ORG MBR_ADDRESS]
+[ORG MBR_PA]
 
 xor ax, ax
 
@@ -72,7 +72,7 @@ mov es, ax
 mov ss, ax
 
 ; Set stack point (grows downwards).
-mov sp, MBR_ADDRESS
+mov sp, MBR_PA
 
 
 mov ah, SET_VIDEO_MODE
@@ -112,7 +112,7 @@ mov ah, EXTENDED_READ_FUNCTION_CODE
 int BIOS_DISK_SERVICES
 jc error_l
 
-jmp LOADER_ADDRESS
+jmp LOADER_PA
 
 
 error_p:
@@ -145,20 +145,20 @@ loader_failed_str: db 'ERROR: Failed to load the loader', NL, 0
 
 ; For reading print into memory.
 print_disk_address_packet:
-db DISK_ADDRESS_PACKET_SIZE
+db DISK_PA_PACKET_SIZE
 db 0
 dw PRINT_SECTORS
-dd PRINT_ADDRESS
+dd PRINT_PA
 dq PRINT_START_SECTOR
 
 
 
 ; For reading loader into memory.
 loader_disk_address_packet:
-db DISK_ADDRESS_PACKET_SIZE
+db DISK_PA_PACKET_SIZE
 db 0
 dw LOADER_SECTORS
-dd LOADER_ADDRESS
+dd LOADER_PA
 dq LOADER_START_SECTOR
 
 

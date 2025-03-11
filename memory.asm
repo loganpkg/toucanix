@@ -16,10 +16,10 @@
 
 
 section .text
-global switch_pml4
+global switch_pml4_pa
 
 
-switch_pml4:
+switch_pml4_pa:
 ; Argument 1: rdi: Physical address of the start of the new PML4.
 mov cr3, rdi
 ret

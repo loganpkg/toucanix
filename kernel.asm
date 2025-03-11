@@ -18,7 +18,7 @@
 
 %include "defs.asm"
 
-KERNEL_STACK_VIRTUAL_ADDRESS equ KERNEL_VIRTUAL_ADDRESS
+KERNEL_STACK_VA equ KERNEL_VA
 
 
 ; Programmable Interval Timer (PIT).
@@ -117,7 +117,7 @@ dq global_descriptor_table
 
 task_state_segment:
 dd 0
-dq KERNEL_STACK_VIRTUAL_ADDRESS
+dq KERNEL_STACK_VA
 times TSS_SIZE - ($ - task_state_segment) - BYTES_PER_DOUBLE_WORD db 0
 dd TSS_SIZE
 
@@ -129,10 +129,10 @@ extern kernel_main
 global _start
 _start:
 
-mov rsp, KERNEL_STACK_VIRTUAL_ADDRESS
+mov rsp, KERNEL_STACK_VA
 
 ; Remove identity mapping.
-mov rax, PML4E_IDENTITY_VIRTUAL_ADDRESS
+mov rax, PML4E_IDENTITY_VA
 mov qword [rax], 0
 
 

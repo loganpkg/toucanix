@@ -30,3 +30,15 @@ Toucanix is a simple operating system, named after a Toucan
            (_ _ _)
              K K
 ```
+
+Abbreviations
+-------------
+
+| Abbreviation | Expansion        |
+| :----------- | :--------------- |
+| pa           | Physical Address |
+| va           | Virtual Address  |
+| excl         | Exclusive        |
+| exec         | Executable       |
+| exp          | Exponent         |
+| PM           | Protected Mode   |

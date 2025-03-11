@@ -27,7 +27,7 @@ BYTES_PER_LINE equ SCREEN_WIDTH * BYTES_PER_SCREEN_CHAR
 
 
 [BITS 16]
-[ORG PRINT_ADDRESS]
+[ORG PRINT_PA]
 
 ; Note that row index starts from zero, not one.
 row: dd 0

@@ -31,7 +31,7 @@ void kernel_main(void)
 
     init_idt();
     init_screen();
-    (void) print_memory_map();
+    (void) print_memory_map_pa();
     printf("etext: %lx\n", (unsigned long) &etext);
     printf("edata: %lx\n", (unsigned long) &edata);
     printf("end: %lx\n", (unsigned long) &end);

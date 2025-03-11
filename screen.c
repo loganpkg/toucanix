@@ -28,16 +28,16 @@
 #define BYTES_PER_LINE (SCREEN_WIDTH * BYTES_PER_SCREEN_CHAR)
 
 
-#define MBR_ADDRESS 0x7c00
+#define MBR_PA 0x7c00
 #define MBR_SECTOR 1
 #define BYTES_PER_SECTOR 512
-#define PRINT_ADDRESS (MBR_ADDRESS + (MBR_SECTOR * BYTES_PER_SECTOR))
-#define PRINT_VIRTUAL_ADDRESS (KERNEL_SPACE_VIRTUAL_ADDRESS + PRINT_ADDRESS)
-#define ROW PRINT_VIRTUAL_ADDRESS
-#define COL (PRINT_VIRTUAL_ADDRESS + 4)
+#define PRINT_PA (MBR_PA + (MBR_SECTOR * BYTES_PER_SECTOR))
+#define PRINT_VA (KERNEL_SPACE_VA + PRINT_PA)
+#define ROW PRINT_VA
+#define COL (PRINT_VA + 4)
 
 
-#define text_ptr(r, c) ((char *) VIDEO_VIRTUAL_ADDRESS + (r) * BYTES_PER_LINE \
+#define text_ptr(r, c) ((char *) VIDEO_VA + (r) * BYTES_PER_LINE \
     + (c) * BYTES_PER_SCREEN_CHAR)
 
 #define colour_ptr(r, c) ((uint8_t *) text_ptr((r), (c)) + 1)
@@ -66,15 +66,13 @@ void write_to_screen(char *buf, int s, uint8_t colour)
         }
         if (row == SCREEN_HEIGHT) {
             /* Scroll up a line. */
-            memmove((void *) VIDEO_VIRTUAL_ADDRESS,
-                    (const void *) (VIDEO_VIRTUAL_ADDRESS +
-                                    BYTES_PER_LINE),
+            memmove((void *) VIDEO_VA,
+                    (const void *) (VIDEO_VA + BYTES_PER_LINE),
                     (SCREEN_HEIGHT - 1) * BYTES_PER_LINE);
             --row;
             /* Clear last row. */
-            memset((void *) (VIDEO_VIRTUAL_ADDRESS
-                             + (SCREEN_HEIGHT - 1) * BYTES_PER_LINE), 0,
-                   BYTES_PER_LINE);
+            memset((void *) (VIDEO_VA + (SCREEN_HEIGHT - 1) * BYTES_PER_LINE),
+                   0, BYTES_PER_LINE);
         }
         ch = *(buf + i);
 

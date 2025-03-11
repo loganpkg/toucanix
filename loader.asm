@@ -19,15 +19,15 @@
 %include "defs.asm"
 
 ; System Memory Map.
-MEMORY_MAP_ENTRY_COUNT_ADDRESS equ 0x9000
+MEMORY_MAP_ENTRY_COUNT_PA equ 0x9000
 DWORD_SIZE equ 4
-MEMORY_MAP_ADDRESS equ MEMORY_MAP_ENTRY_COUNT_ADDRESS + DWORD_SIZE
+MEMORY_MAP_PA equ MEMORY_MAP_ENTRY_COUNT_PA + DWORD_SIZE
 
 BIOS_SYSTEM_SERVICES equ 0x15
-SYSTEM_ADDRESS_MAP_FUNCTION_CODE equ 0xe820
+SYSTEM_PA_MAP_FUNCTION_CODE equ 0xe820
 ; SMAP. PAMS in little-endian.
 SYSTEM_MAP_SIGNATURE equ 0x534D4150
-ADDRESS_RANGE_DESCRIPTOR_SIZE equ 20
+PA_RANGE_DESCRIPTOR_SIZE equ 20
 
 
 ; cpuid.
@@ -41,8 +41,8 @@ LONG_MODE_SUPPORT     equ 1 << 29
 ; PM = Protected Mode.
 
 CODE_ACCESS_BYTE_PM equ PRESENT_BIT_SET \
-    | TYPE_IS_CODE_OR_DATA_SEGMENT   \
-    | EXECUTABLE                     \
+    | TYPE_IS_CODE_OR_DATA_SEGMENT      \
+    | EXEC                              \
     | CODE_READ_OR_DATA_WRITE_ACCESS
 
 DATA_ACCESS_BYTE_PM equ PRESENT_BIT_SET \
@@ -53,7 +53,7 @@ FLAGS_NIBBLE_PM equ GRANULARITY_4_KIB \
     | SIZE_32_BIT_SEGMENT
 
 
-BASE_ADDRESS equ 0
+BASE_PA equ 0
 
 SEGMENT_LIMIT_PM equ 0xfffff
 SEGMENT_LIMIT equ 0
@@ -63,7 +63,7 @@ DATA_SELECTOR equ DATA_SEGMENT_INDEX << 3
 
 ; IDT = Interrupt Descriptor Table.
 IDT_PM_INVALID_SIZE_MINUS_1 equ 0
-IDT_PM_INVALID_ADDRESS equ 0
+IDT_PM_INVALID_PA equ ZERO_PA
 
 PROTECTED_MODE equ 1
 
@@ -72,28 +72,28 @@ PROTECTED_MODE equ 1
 MSR_EFER equ 0xC0000080
 
 LONG_MODE_ENABLE equ 1 << 8
-PHYSICAL_ADDRESS_EXTENSION equ 1 << 5
+PA_EXTENSION equ 1 << 5
 PAGING equ 1 << 31
 
 
 ; PML4 = Page Map Level 4 (table).
 ; PDPT = Page Directory Pointer Table.
-ZERO_ADDRESS equ 0
+ZERO_PA equ 0
 PML4_SIZE equ 0x1000
 PDPT_SIZE equ 0x1000
-PDPT_ADDRESS equ PML4_ADDRESS + PML4_SIZE
+PDPT_PA equ PML4_PA + PML4_SIZE
 
 LOWER_BIT_OF_PML4_COMPONENT equ 39
 LOWER_9_BITS equ 0x1ff
 BYTES_PER_PML4_ENTRY equ 8
 
-PML4E_KERNEL_SPACE equ PML4_ADDRESS \
-    + (KERNEL_SPACE_VIRTUAL_ADDRESS >> LOWER_BIT_OF_PML4_COMPONENT \
-        & LOWER_9_BITS) * BYTES_PER_PML4_ENTRY
+PML4E_KERNEL_SPACE equ PML4_PA \
+    + (KERNEL_SPACE_VA >> LOWER_BIT_OF_PML4_COMPONENT & LOWER_9_BITS) \
+    * BYTES_PER_PML4_ENTRY
 
 BYTES_PER_PDPT_ENTRY equ 8
 NUM_GIB_MAPPED equ PDPT_SIZE / BYTES_PER_PDPT_ENTRY
-EXPONENT_1_GIB equ 30
+EXP_1_GIB equ 30
 
 PAGE_PRESENT    equ 1
 READ_AND_WRITE  equ 1 << 1
@@ -105,22 +105,22 @@ PS              equ 1 << 7
 
 
 [BITS 16]
-[ORG LOADER_ADDRESS]
+[ORG LOADER_PA]
 
 ; Save the system memory map.
-mov dword [MEMORY_MAP_ENTRY_COUNT_ADDRESS], 0
-mov edi, MEMORY_MAP_ADDRESS
+mov dword [MEMORY_MAP_ENTRY_COUNT_PA], 0
+mov edi, MEMORY_MAP_PA
 xor ebx, ebx ; Continuation value
 mm_loop:
-mov ecx, ADDRESS_RANGE_DESCRIPTOR_SIZE
+mov ecx, PA_RANGE_DESCRIPTOR_SIZE
 mov edx, SYSTEM_MAP_SIGNATURE
-mov eax, SYSTEM_ADDRESS_MAP_FUNCTION_CODE
+mov eax, SYSTEM_PA_MAP_FUNCTION_CODE
 int BIOS_SYSTEM_SERVICES
 jc error_a
-inc dword [MEMORY_MAP_ENTRY_COUNT_ADDRESS]
+inc dword [MEMORY_MAP_ENTRY_COUNT_PA]
 test ebx, ebx
 jz ok
-add edi, ADDRESS_RANGE_DESCRIPTOR_SIZE
+add edi, PA_RANGE_DESCRIPTOR_SIZE
 jmp mm_loop
 ok:
 
@@ -198,29 +198,29 @@ mov ds, ax
 mov es, ax
 mov ss, ax
 
-mov esp, MBR_ADDRESS
+mov esp, MBR_PA
 
 
 setup_paging:
 ; Zero data.
 cld
-mov edi, PML4_ADDRESS
+mov edi, PML4_PA
 xor eax, eax
 mov ecx, (PML4_SIZE + PDPT_SIZE) / BYTES_PER_DOUBLE_WORD
 rep stosd
 
 
 mov dword [PML4E_IDENTITY], \
-    PDPT_ADDRESS | READ_AND_WRITE | PAGE_PRESENT
+    PDPT_PA | READ_AND_WRITE | PAGE_PRESENT
 
 mov dword [PML4E_KERNEL_SPACE], \
-    PDPT_ADDRESS | READ_AND_WRITE | PAGE_PRESENT
+    PDPT_PA | READ_AND_WRITE | PAGE_PRESENT
 
 ; First GiB only.
-mov dword [PDPT_ADDRESS], \
-    ZERO_ADDRESS | PS | READ_AND_WRITE | PAGE_PRESENT
+mov dword [PDPT_PA], \
+    ZERO_PA | PS | READ_AND_WRITE | PAGE_PRESENT
 
-mov eax, PML4_ADDRESS
+mov eax, PML4_PA
 mov cr3, eax
 
 
@@ -233,7 +233,7 @@ or eax, LONG_MODE_ENABLE
 wrmsr
 
 mov eax, cr4
-or eax, PHYSICAL_ADDRESS_EXTENSION
+or eax, PA_EXTENSION
 mov cr4, eax
 
 mov eax, cr0
@@ -246,19 +246,19 @@ jmp CODE_SELECTOR:long_mode_start
 [BITS 64]
 long_mode_start:
 
-mov rsp, MBR_ADDRESS
+mov rsp, MBR_PA
 
 
 complete_paging:
 mov rcx, 1 ; First GiB has already been done.
-mov rdi, PDPT_ADDRESS + BYTES_PER_PDPT_ENTRY
+mov rdi, PDPT_PA + BYTES_PER_PDPT_ENTRY
 xor rsi, rsi
 
 .loop:
 cmp rcx, NUM_GIB_MAPPED
 jae .done
 mov rsi, rcx
-shl rsi, EXPONENT_1_GIB
+shl rsi, EXP_1_GIB
 or rsi, PS | READ_AND_WRITE | PAGE_PRESENT
 mov [rdi], rsi
 add rdi, BYTES_PER_PDPT_ENTRY
@@ -269,12 +269,12 @@ jmp .loop
 
 ; Relocate the kernel.
 cld
-mov rdi, KERNEL_ADDRESS
-mov rsi, KERNEL_ORIGINAL_ADDRESS
+mov rdi, KERNEL_PA
+mov rsi, KERNEL_ORIGINAL_PA
 mov rcx, KERNEL_SIZE / 8
 rep movsq
 
-mov rax, KERNEL_VIRTUAL_ADDRESS
+mov rax, KERNEL_VA
 jmp rax
 
 
@@ -289,7 +289,7 @@ kernel_load_failed: db 'ERROR: Failed to load kernel', NL, 0
 
 ; For reading kernel into memory.
 kernel_disk_address_packet:
-db DISK_ADDRESS_PACKET_SIZE
+db DISK_PA_PACKET_SIZE
 db 0
 dw KERNEL_SECTORS
 dw KERNEL_ORIGINAL_OFFSET, KERNEL_ORIGINAL_SEGMENT
@@ -301,21 +301,22 @@ dq NULL_SEGMENT
 
 ; Code segment.
 dw SEGMENT_LIMIT_PM & 0xffff
-dw BASE_ADDRESS & 0xffff
-db BASE_ADDRESS >> 16 & 0xff
+dw BASE_PA & 0xffff
+db BASE_PA >> 16 & 0xff
 db CODE_ACCESS_BYTE_PM
 db FLAGS_NIBBLE_PM << 4 | SEGMENT_LIMIT_PM >> 16
-db BASE_ADDRESS >> 24
+db BASE_PA >> 24
 
 ; Data segment.
 dw SEGMENT_LIMIT_PM & 0xffff
-dw BASE_ADDRESS & 0xffff
-db BASE_ADDRESS >> 16 & 0xff
+dw BASE_PA & 0xffff
+db BASE_PA >> 16 & 0xff
 db DATA_ACCESS_BYTE_PM
 db FLAGS_NIBBLE_PM << 4 | SEGMENT_LIMIT_PM >> 16
-db BASE_ADDRESS >> 24
+db BASE_PA >> 24
 
 GDT_PM_SIZE equ $ - global_descriptor_table_PM
+
 
 
 GDT_PM_descriptor:
@@ -325,7 +326,9 @@ dd global_descriptor_table_PM
 
 IDT_PM_descriptor:
 dw IDT_PM_INVALID_SIZE_MINUS_1
-dd IDT_PM_INVALID_ADDRESS
+; This expects a virtual address, but since there is currently an identity
+; mapping in-force, then a "physical" address can be used.
+dd IDT_PM_INVALID_PA
 
 
 
