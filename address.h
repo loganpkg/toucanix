@@ -36,5 +36,6 @@
 #define PML4_PA 0x70000
 #define PML4_VA pa_to_va(PML4_PA)
 
+#define USER_EXEC_START_VA 0x400000
 
 #endif

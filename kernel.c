@@ -27,7 +27,7 @@ extern char etext, edata, end;
 
 void kernel_main(void)
 {
-    int r;
+    uint64_t pml4_pa_A, pml4_pa_B;
 
     init_idt();
     init_screen();
@@ -37,18 +37,28 @@ void kernel_main(void)
     printf("end: %lx\n", (unsigned long) &end);
 
 
+    (void) init_free_physical_memory();
 
-    (void) collect_free_memory();
+    check_physical_memory();
 
-    (void) printf("memcmp: %lx\n", (unsigned long) memcmp("abz", "abc", 4));
+    pml4_pa_A = create_kernel_virtual_memory_space();
+    assert(pml4_pa_A != 0);
 
+    report_physical_memory();
+    check_physical_memory();
+    switch_pml4_pa(pml4_pa_A);
 
+    pml4_pa_B = create_kernel_virtual_memory_space();
+    assert(pml4_pa_B != 0);
 
+    report_physical_memory();
+    check_physical_memory();
+    switch_pml4_pa(pml4_pa_B);
 
-    r = init_kernel_virtual_memory_space();
-    assert(r == 0);
+    free_memory_space(pml4_pa_A);
 
+    report_physical_memory();
+    check_physical_memory();
 
-
-    (void) printf("cool\n");
+    (void) printf("Done\n");
 }

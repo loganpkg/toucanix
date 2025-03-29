@@ -25,7 +25,11 @@ void switch_pml4_pa(uint64_t new_pml4_start_pa);
 
 /* From memory.c file. */
 int print_memory_map_pa(void);
-int collect_free_memory(void);
-int init_kernel_virtual_memory_space(void);
+int init_free_physical_memory(void);
+int report_physical_memory(void);
+int check_physical_memory(void);
+void free_memory_space(uint64_t pml4_pa);
+uint64_t create_kernel_virtual_memory_space(void);
+
 
 #endif
