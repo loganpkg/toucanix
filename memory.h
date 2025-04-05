@@ -26,6 +26,7 @@ void switch_pml4_pa(uint64_t new_pml4_start_pa);
 
 /* From memory.c file. */
 int print_memory_map_pa(void);
+void free_page_pa(uint64_t start_page_pa);
 uint64_t allocate_page_pa(void);
 int init_free_physical_memory(void);
 int report_physical_memory(void);

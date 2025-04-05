@@ -103,16 +103,18 @@ int start_init_process(void)
     pr->ppid = KERNEL_PID;
 
     pr->state = INIT_PROCESS;
-    if (!
-        (pr->pml4_pa = create_user_virtual_memory_space((uint64_t) main, 100)))
-        return -1;
 
-    if (!(p = allocate_page_pa())) {
-        free_4_level_paging(pcb[0].pml4_pa);
+    if (!(p = allocate_page_pa()))
         return -1;
-    }
 
     pr->kernel_stack_page_va = pa_to_va(p);
+
+    if (!
+        (pr->pml4_pa =
+         create_user_virtual_memory_space((uint64_t) main, 10485773))) {
+        free_page_pa(p);
+        return -1;
+    }
 
     pr->isf_va =
         (struct interrupt_stack_frame *) (pr->kernel_stack_page_va +
@@ -137,6 +139,8 @@ int start_init_process(void)
 
 static int main(void)
 {
-    *((char *) VIDEO_VA + 10) = 'Y';
+    char x = 'X';
+    ++x;
+    *((char *) VIDEO_VA + 10) = x;
     return 0;
 }

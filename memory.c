@@ -95,7 +95,7 @@ int print_memory_map_pa(void)
 }
 
 
-static void free_page_pa(uint64_t start_page_pa)
+void free_page_pa(uint64_t start_page_pa)
 {
     /*
      * Page starting at physical address zero cannot be used,
