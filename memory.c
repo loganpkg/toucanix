@@ -38,10 +38,6 @@
     + ((uint64_t) NUM_GIB_MAPPED << EXP_1_GIB))
 
 
-#define EXP_2_MIB 21
-#define PAGE_SIZE (1 << EXP_2_MIB)
-
-
 #define PAGE_PRESENT    1
 #define READ_AND_WRITE  1 << 1
 #define USER_ACCESS     1 << 2
@@ -50,16 +46,6 @@
 
 
 #define FREE_PAGE_SIGNATURE 0xC0FFEECAFE0FC0DE
-
-
-/*
- * Aligns up to the next page if not already aligned. The minus one is so
- * that an already aligned address will not move up to the next page.
- */
-#define align_to_page(a) (((a) + PAGE_SIZE - 1) >> EXP_2_MIB << EXP_2_MIB)
-
-/* Truncates an address down to the start of its page. */
-#define truncate_to_page(a) ((a) >> EXP_2_MIB << EXP_2_MIB)
 
 
 /* Virtual (linear) address components for paging. */
@@ -133,7 +119,7 @@ static void free_page_pa(uint64_t start_page_pa)
 }
 
 
-static uint64_t allocate_page_pa(void)
+uint64_t allocate_page_pa(void)
 {
     /* Returns the physical address of the start of the page. */
     uint64_t p;
@@ -386,7 +372,7 @@ static int free_user_data_range(uint64_t pml4_pa, uint64_t start_va,
 }
 
 
-void free_memory_space(uint64_t pml4_pa)
+void free_4_level_paging(uint64_t pml4_pa)
 {
     /* Assumes that data pages have already been freed. */
     uint64_t i, j, pml4e_pa, pml4e_content, pdpt_pa, pdpte_pa, pdpte_content,
@@ -414,12 +400,32 @@ void free_memory_space(uint64_t pml4_pa)
 }
 
 
+uint64_t create_kernel_virtual_memory_space(void)
+{
+    uint64_t pml4_pa;
+
+    pml4_pa = allocate_page_pa();
+    if (pml4_pa == 0)
+        return 0;               /* Error. */
+
+    if (map_range
+        (pml4_pa, KERNEL_SPACE_VA, pa_to_va(max_pa_excl), 0,
+         (uint32_t) READ_AND_WRITE)) {
+        free_4_level_paging(pml4_pa);
+        return 0;               /* Error. */
+    }
+
+    return pml4_pa;
+}
+
+
 uint64_t create_user_virtual_memory_space(uint64_t exec_start_va,
                                           uint64_t exec_size)
 {
     uint64_t pml4_pa, v, p, s, x, y;
 
-    pml4_pa = allocate_page_pa();
+    /* Every user space also has a kernel space. */
+    pml4_pa = create_kernel_virtual_memory_space();
     if (pml4_pa == 0)
         return 0;               /* Error. */
 
@@ -433,10 +439,10 @@ uint64_t create_user_virtual_memory_space(uint64_t exec_start_va,
         if (p == 0)
             goto clean_up;
 
-        if (s <= PAGE_SIZE)
+        if (s <= (uint64_t) PAGE_SIZE)
             x = s;
         else
-            x = PAGE_SIZE;
+            x = (uint64_t) PAGE_SIZE;
 
         memcpy((void *) pa_to_va(p), (const void *) v, x);
 
@@ -452,30 +458,25 @@ uint64_t create_user_virtual_memory_space(uint64_t exec_start_va,
         y += PAGE_SIZE;
     }
 
+
+    /* User stack. */
+    p = allocate_page_pa();
+    if (p == 0)
+        goto clean_up;
+
+    if (map_range
+        (pml4_pa, USER_STACK_PAGE_VA, USER_STACK_PAGE_VA + PAGE_SIZE, p,
+         (uint32_t) READ_AND_WRITE | USER_ACCESS)) {
+        free_page_pa(p);
+        goto clean_up;
+    }
+
+
     return pml4_pa;
 
   clean_up:
-    free_user_data_range(pml4_pa, USER_EXEC_START_VA, exec_size);
-    free_memory_space(pml4_pa);
+    (void) free_user_data_range(pml4_pa, USER_EXEC_START_VA, exec_size);
+    free_4_level_paging(pml4_pa);
 
     return 0;                   /* Error. */
-}
-
-
-uint64_t create_kernel_virtual_memory_space(void)
-{
-    uint64_t pml4_pa;
-
-    pml4_pa = allocate_page_pa();
-    if (pml4_pa == 0)
-        return 0;               /* Error. */
-
-    if (map_range
-        (pml4_pa, KERNEL_SPACE_VA, pa_to_va(max_pa_excl), 0,
-         (uint32_t) READ_AND_WRITE)) {
-        free_page_pa(pml4_pa);
-        return 0;               /* Error. */
-    }
-
-    return pml4_pa;
 }

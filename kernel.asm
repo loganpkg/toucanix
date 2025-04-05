@@ -62,7 +62,6 @@ TSS_SELECTOR equ TSS_INDEX << 3
 RFLAGS_INTERRUPT_ENABLE equ 1 << 9
 RFLAGS_RESERVED_BIT_1 equ 1 << 1
 
-CPL_MASK equ 3
 
 TSS_SIZE equ 104
 
@@ -72,6 +71,7 @@ TSS_AVAILABLE equ 9
 
 
 section .data
+global tss
 
 global_descriptor_table:
 ; Base and limit are ignored (except for the TSS).
@@ -114,11 +114,11 @@ dq global_descriptor_table
 
 
 
-
-task_state_segment:
+; Task state segment.
+tss:
 dd 0
 dq KERNEL_STACK_VA
-times TSS_SIZE - ($ - task_state_segment) - BYTES_PER_DOUBLE_WORD db 0
+times TSS_SIZE - ($ - tss) - BYTES_PER_DOUBLE_WORD db 0
 dd TSS_SIZE
 
 
@@ -127,6 +127,7 @@ dd TSS_SIZE
 section .text
 extern kernel_main
 global _start
+
 _start:
 
 mov rsp, KERNEL_STACK_VA
@@ -137,7 +138,7 @@ mov qword [rax], 0
 
 
 ; Complete TSS entry in GDT.
-mov rax, qword task_state_segment
+mov rax, qword tss
 
 mov rbx, qword tss_entry.base_a_word
 mov [rbx], ax

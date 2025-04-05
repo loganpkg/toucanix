@@ -21,44 +21,64 @@
 #include "interrupt.h"
 #include "memory.h"
 #include "printf.h"
+#include "process.h"
 #include "screen.h"
 
 extern char etext, edata, end;
 
 void kernel_main(void)
 {
+    int r;
     uint64_t pml4_pa_A, pml4_pa_B;
 
     init_idt();
     init_screen();
-    (void) print_memory_map_pa();
+
+    r = print_memory_map_pa();
+    assert(r == 0);
+
     printf("etext: %lx\n", (unsigned long) &etext);
     printf("edata: %lx\n", (unsigned long) &edata);
     printf("end: %lx\n", (unsigned long) &end);
 
+    r = init_free_physical_memory();
+    assert(r == 0);
 
-    (void) init_free_physical_memory();
-
-    check_physical_memory();
+    r = check_physical_memory();
+    assert(r == 0);
 
     pml4_pa_A = create_kernel_virtual_memory_space();
     assert(pml4_pa_A != 0);
 
-    report_physical_memory();
-    check_physical_memory();
+    r = report_physical_memory();
+    assert(r == 0);
+
+    r = check_physical_memory();
+    assert(r == 0);
+
     switch_pml4_pa(pml4_pa_A);
 
     pml4_pa_B = create_kernel_virtual_memory_space();
     assert(pml4_pa_B != 0);
 
-    report_physical_memory();
-    check_physical_memory();
+    r = report_physical_memory();
+    assert(r == 0);
+
+    r = check_physical_memory();
+    assert(r == 0);
+
     switch_pml4_pa(pml4_pa_B);
 
-    free_memory_space(pml4_pa_A);
+    free_4_level_paging(pml4_pa_A);
 
-    report_physical_memory();
-    check_physical_memory();
+    r = report_physical_memory();
+    assert(r == 0);
 
-    (void) printf("Done\n");
+    r = check_physical_memory();
+    assert(r == 0);
+
+    printf("init process...\n");
+
+    r = start_init_process();
+    assert(r == 0);
 }

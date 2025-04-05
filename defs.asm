@@ -69,6 +69,7 @@ PML4E_IDENTITY_VA equ KERNEL_SPACE_VA + PML4E_IDENTITY
 
 
 ; Colours.
+BLUE equ 1
 RED equ 4
 
 ; Light.

@@ -18,6 +18,7 @@
 #include "address.h"
 #include "asm_lib.h"
 #include "interrupt.h"
+#include "printf.h"
 #include "screen.h"
 
 
@@ -29,6 +30,7 @@
 
 #define PRESENT_BIT_SET (1 << 7)
 
+#define CPL_MASK 3
 
 /* The Argument vn stands for Vector Number. */
 #define set_isr(vn) update_idt_with_isr(idt + vn, (uint64_t) vector_ ## vn, \
@@ -54,33 +56,6 @@ struct idt_descriptor {
 } __attribute__((packed));
 
 static struct idt_descriptor idt_desc;
-
-
-struct interrupt_stack_frame {
-    uint64_t r15;
-    uint64_t r14;
-    uint64_t r13;
-    uint64_t r12;
-    uint64_t r11;
-    uint64_t r10;
-    uint64_t r9;
-    uint64_t r8;
-    uint64_t rbp;
-    uint64_t rdi;
-    uint64_t rsi;
-    uint64_t rdx;
-    uint64_t rcx;
-    uint64_t rbx;
-    uint64_t rax;
-
-    uint64_t vector_number;
-    uint64_t error_code;
-    uint64_t rip;
-    uint64_t cs;
-    uint64_t rflags;
-    uint64_t rsp;
-    uint64_t ss;
-};
 
 
 
@@ -113,6 +88,7 @@ extern void vector_39(void);
 void load_idt(struct idt_descriptor *idt_desc_p);
 int is_spurious_interrupt(void);
 void acknowledge_interrupt(void);
+uint64_t get_cr2(void);
 
 
 
@@ -173,17 +149,17 @@ void init_idt(void)
 void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
 {
     char *v;
-    struct interrupt_stack_frame *isf_p;
+    struct interrupt_stack_frame *isf_va;
 
-    isf_p = (struct interrupt_stack_frame *) address_of_interrupt_stack_frame;
+    isf_va = (struct interrupt_stack_frame *) address_of_interrupt_stack_frame;
 
-    switch (isf_p->vector_number) {
+    switch (isf_va->vector_number) {
     case 32:
         /* Timer */
 
         v = (char *) VIDEO_VA;
         ++*v;
-        *((uint8_t *) v + 1) = GREEN;
+        *((uint8_t *) v + 1) = BLUE;
 
         acknowledge_interrupt();
         break;
@@ -201,7 +177,7 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
 
     default:
         v = (char *) VIDEO_VA + 4;
-        switch (isf_p->vector_number) {
+        switch (isf_va->vector_number) {
         case 0:
             *v = '0';
             break;
@@ -259,6 +235,16 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
         }
 
         *((uint8_t *) v + 1) = RED;
+
+
+        printf("Interrupt Handler:\n");
+        printf("    Vector Number: %lu\n",
+               (unsigned long) isf_va->vector_number);
+        printf("    Error Code: %lu\n", (unsigned long) isf_va->error_code);
+        printf("    Ring: %lu\n", (unsigned long) (isf_va->cs & CPL_MASK));
+        printf("    rip: %lx\n", (unsigned long) isf_va->rip);
+        printf("    cr2: %lx\n", (unsigned long) get_cr2());
+
 
         while (1);
     }

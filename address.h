@@ -19,6 +19,19 @@
 #define ADDRESS_H
 
 
+#define EXP_2_MIB 21
+#define PAGE_SIZE (1 << EXP_2_MIB)
+
+/*
+ * Aligns up to the next page if not already aligned. The minus one is so
+ * that an already aligned address will not move up to the next page.
+ */
+#define align_to_page(a) (((a) + PAGE_SIZE - 1) >> EXP_2_MIB << EXP_2_MIB)
+
+/* Truncates an address down to the start of its page. */
+#define truncate_to_page(a) ((a) >> EXP_2_MIB << EXP_2_MIB)
+
+
 /* Converts a physical address to a virtual address. */
 #define pa_to_va(a) ((a) + KERNEL_SPACE_VA)
 
@@ -37,5 +50,8 @@
 #define PML4_VA pa_to_va(PML4_PA)
 
 #define USER_EXEC_START_VA 0x400000
+
+#define USER_SPACE_TOP_VA ((uint64_t) 0x7fffffffffff)
+#define USER_STACK_PAGE_VA truncate_to_page(USER_SPACE_TOP_VA)
 
 #endif

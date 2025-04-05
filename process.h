@@ -15,27 +15,9 @@
  */
 
 
-#ifndef SCREEN_H
-#define SCREEN_H
+#ifndef PROCESS_H
+#define PROCESS_H
 
-
-#include "stdint.h"
-
-/* Colours */
-#define BLUE 1
-#define RED 4
-
-/* Light */
-#define GREY 7
-#define GREEN 0xa
-
-#define MAGENTA 5
-#define YELLOW 0xe
-
-#define YELLOW_ON_MAGENTA (MAGENTA << 4 | YELLOW)
-
-void init_screen(void);
-void write_to_screen(char *buf, int s, uint8_t colour);
-
+int start_init_process(void);
 
 #endif

@@ -36,6 +36,8 @@ extern interrupt_handler
 global load_idt
 global is_spurious_interrupt
 global acknowledge_interrupt
+global enter_process
+global get_cr2
 
 
 %macro push_all 0
@@ -124,9 +126,11 @@ interrupt_common:
 push_all
 mov rdi, rsp ; Prepare argument 1: Address of the interrupt stack frame.
 call interrupt_handler
+
+interrupt_return:
+pop_all
 ; Remove error_code and vector_number from stack.
 add rsp, 16
-pop_all
 iretq
 
 
@@ -156,4 +160,16 @@ acknowledge_interrupt:
 ; No arguments.
 mov al, END_OF_INTERRUPT
 out PIC_MASTER_COMMAND, al
+ret
+
+
+enter_process:
+; Argument 1: rdi: Interrupt stack frame.
+mov rsp, rdi
+jmp interrupt_return
+
+
+get_cr2:
+; No arguments.
+mov rax, cr2
 ret
