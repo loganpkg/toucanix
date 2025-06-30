@@ -15,7 +15,7 @@
  */
 
 
-#include "printf.h"
+#include "k_printf.h"
 
 
 #ifdef assert
@@ -27,7 +27,7 @@
 #else
 #define assert(expression) do {                                             \
         if (!(expression)) {                                                \
-            (void) printf("%s: %lu: Assertion failed: " #expression "\n",   \
+            (void) k_printf("%s: %lu: Assertion failed: " #expression "\n", \
                 __FILE__, (unsigned long) __LINE__);                        \
             while (1);                                                      \
         }                                                                   \

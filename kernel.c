@@ -20,7 +20,7 @@
 #include "asm_lib.h"
 #include "interrupt.h"
 #include "memory.h"
-#include "printf.h"
+#include "k_printf.h"
 #include "process.h"
 #include "screen.h"
 
@@ -37,9 +37,9 @@ void kernel_main(void)
     r = print_memory_map_pa();
     assert(r == 0);
 
-    printf("etext: %lx\n", (unsigned long) &etext);
-    printf("edata: %lx\n", (unsigned long) &edata);
-    printf("end: %lx\n", (unsigned long) &end);
+    k_printf("etext: %lx\n", (unsigned long) &etext);
+    k_printf("edata: %lx\n", (unsigned long) &edata);
+    k_printf("end: %lx\n", (unsigned long) &end);
 
     r = init_free_physical_memory();
     assert(r == 0);
@@ -77,7 +77,7 @@ void kernel_main(void)
     r = check_physical_memory();
     assert(r == 0);
 
-    printf("init process...\n");
+    k_printf("init process...\n");
 
     r = start_init_process();
     assert(r == 0);

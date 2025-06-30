@@ -19,7 +19,7 @@
 #include "asm_lib.h"
 #include "assert.h"
 #include "memory.h"
-#include "printf.h"
+#include "k_printf.h"
 
 
 #define MEMORY_MAP_ENTRY_COUNT_PA 0x9000
@@ -84,8 +84,8 @@ int print_memory_map_pa(void)
     p = (struct pa_range_descriptor *) MEMORY_MAP_VA;
 
     for (i = 0; i < num_entries; ++i) {
-        if (printf("%lx : %lu : %lu\n", (unsigned long) p->pa,
-                   (unsigned long) p->size, (unsigned long) p->type) == -1)
+        if (k_printf("%lx : %lu : %lu\n", (unsigned long) p->pa,
+                     (unsigned long) p->size, (unsigned long) p->type) == -1)
             return -1;
 
         ++p;
@@ -149,14 +149,14 @@ int check_physical_memory(void)
 
     while (h != 0) {
         if (h % PAGE_SIZE) {
-            printf("ERROR: Physical memory: Page not aligned: %lx\n",
-                   (unsigned long) h);
+            k_printf("ERROR: Physical memory: Page not aligned: %lx\n",
+                     (unsigned long) h);
             return -1;
         }
 
         if (*(uint64_t *) pa_to_va(h + sizeof(uint64_t)) !=
             (uint64_t) FREE_PAGE_SIGNATURE) {
-            printf("ERROR: Physical memory: Invalid signature\n");
+            k_printf("ERROR: Physical memory: Invalid signature\n");
             return -1;
         }
 
@@ -165,15 +165,15 @@ int check_physical_memory(void)
     }
 
     if (check_num_free_pages != num_free_pages) {
-        printf("ERROR: Physical memory: Mismatch in number of free pages\n");
-        printf("Checked: %lu, Reported: %lu\n",
-               (unsigned long) check_num_free_pages,
-               (unsigned long) num_free_pages);
+        k_printf("ERROR: Physical memory: Mismatch in number of free pages\n");
+        k_printf("Checked: %lu, Reported: %lu\n",
+                 (unsigned long) check_num_free_pages,
+                 (unsigned long) num_free_pages);
 
         return -1;
     }
 
-    printf("Memory check OK\n");
+    k_printf("Memory check OK\n");
     return 0;
 }
 
@@ -208,7 +208,7 @@ static void free_range_va(uint64_t start_va, uint64_t size)
 
 int report_physical_memory(void)
 {
-    if (printf
+    if (k_printf
         ("Used physical pages: %lu/%lu\n", (unsigned long) num_free_pages,
          (unsigned long) max_pages)
         == -1)
@@ -236,7 +236,7 @@ int init_free_physical_memory(void)
     if (report_physical_memory())
         return -1;
 
-    if (printf
+    if (k_printf
         ("Max physical memory exclusive: %lx\n",
          (unsigned long) max_pa_excl) == -1)
         return -1;

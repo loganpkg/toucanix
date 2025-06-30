@@ -60,8 +60,7 @@ struct task_state_segment {
     uint32_t reserved;
     uint64_t rsp0;
     unsigned char unused[TSS_SIZE - sizeof(uint32_t) - sizeof(uint64_t)];
-}
-__attribute__((packed));
+} __attribute__((packed));
 
 
 static struct process_control_block pcb[MAX_PROCESSES];

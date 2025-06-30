@@ -18,7 +18,7 @@
 #include "address.h"
 #include "asm_lib.h"
 #include "interrupt.h"
-#include "printf.h"
+#include "k_printf.h"
 #include "screen.h"
 
 
@@ -237,13 +237,13 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
         *((uint8_t *) v + 1) = RED;
 
 
-        printf("Interrupt Handler:\n");
-        printf("    Vector Number: %lu\n",
-               (unsigned long) isf_va->vector_number);
-        printf("    Error Code: %lu\n", (unsigned long) isf_va->error_code);
-        printf("    Ring: %lu\n", (unsigned long) (isf_va->cs & CPL_MASK));
-        printf("    rip: %lx\n", (unsigned long) isf_va->rip);
-        printf("    cr2: %lx\n", (unsigned long) get_cr2());
+        k_printf("Interrupt Handler:\n");
+        k_printf("    Vector Number: %lu\n",
+                 (unsigned long) isf_va->vector_number);
+        k_printf("    Error Code: %lu\n", (unsigned long) isf_va->error_code);
+        k_printf("    Ring: %lu\n", (unsigned long) (isf_va->cs & CPL_MASK));
+        k_printf("    rip: %lx\n", (unsigned long) isf_va->rip);
+        k_printf("    cr2: %lx\n", (unsigned long) get_cr2());
 
 
         while (1);

@@ -99,7 +99,7 @@ static int print_hex(char *buf, int *used, uint64_t x)
 }
 
 
-int printf(const char *format, ...)
+int k_printf(const char *format, ...)
 {
     va_list a;
     char buf[BUF_SIZE];

@@ -15,11 +15,11 @@
  */
 
 
-#ifndef PRINTF_H
-#define PRINTF_H
+#ifndef K_PRINTF_H
+#define K_PRINTF_H
 
 
-int printf(const char *format, ...);
+int k_printf(const char *format, ...);
 
 
 #endif

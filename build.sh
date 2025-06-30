@@ -133,14 +133,14 @@ find . -type f ! -path '*.git*' \( -name '*.c' -o -name '*.h' \) -exec sh -c '
 
 "$cc" -c $c_options -o kernel_c.o kernel.c
 "$cc" -c $c_options -o interrupt_c.o interrupt.c
-"$cc" -c $c_options -o printf_c.o printf.c
+"$cc" -c $c_options -o k_printf_c.o k_printf.c
 "$cc" -c $c_options -o screen_c.o screen.c
 "$cc" -c $c_options -o memory_c.o memory.c
 "$cc" -c $c_options -o process_c.o process.c
 
 
 "$ld" $ld_options -o kernel \
-kernel_a.o kernel_c.o interrupt_a.o interrupt_c.o asm_lib_a.o printf_c.o \
+kernel_a.o kernel_c.o interrupt_a.o interrupt_c.o asm_lib_a.o k_printf_c.o \
 screen_c.o memory_a.o memory_c.o process_c.o
 
 "$objcopy" -O binary kernel kernel.bin
