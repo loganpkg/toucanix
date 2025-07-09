@@ -20,6 +20,7 @@
 #include "address.h"
 #include "asm_lib.h"
 #include "screen.h"
+#include "defs.h"
 
 
 #define SCREEN_WIDTH 80
@@ -33,9 +34,8 @@
 #define BYTES_PER_SECTOR 512
 #define PRINT_PA (MBR_PA + (MBR_SECTOR * BYTES_PER_SECTOR))
 #define PRINT_VA (KERNEL_SPACE_VA + PRINT_PA)
-#define ROW PRINT_VA
-#define COL (PRINT_VA + 4)
-
+#define ROW_VA PRINT_VA
+#define COL_VA (PRINT_VA + 4)
 
 #define text_ptr(r, c) ((char *) VIDEO_VA + (r) * BYTES_PER_LINE \
     + (c) * BYTES_PER_SCREEN_CHAR)
@@ -48,12 +48,12 @@ static uint64_t row = 0, col = 0;
 
 void init_screen(void)
 {
-    row = *(uint32_t *) ROW;
-    col = *(uint32_t *) COL;
+    row = *(uint32_t *) ROW_VA;
+    col = *(uint32_t *) COL_VA;
 }
 
 
-void write_to_screen(char *buf, int s, uint8_t colour)
+void write_to_screen(char *buf, int s)
 {
     int i;
     char ch;
@@ -81,7 +81,7 @@ void write_to_screen(char *buf, int s, uint8_t colour)
             col = 0;
         } else {
             *text_ptr(row, col) = ch;
-            *colour_ptr(row, col) = colour;
+            *colour_ptr(row, col) = DEFAULT_COLOUR;
             ++col;
         }
     }

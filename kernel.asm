@@ -16,7 +16,7 @@
 
 ; Kernel for Toucanix.
 
-%include "defs.asm"
+%include "defs.inc"
 
 KERNEL_STACK_VA equ KERNEL_VA
 
@@ -33,7 +33,6 @@ PIT_COUNTER equ OSCILLATOR_FREQUENCY_HZ / EVENTS_PER_SECOND
 
 ; Programmable Interrupt Controller (PIC).
 ; IRQ = Interrupt ReQuest.
-PIC_MASTER_COMMAND  equ 0x20
 PIC_MASTER_DATA     equ PIC_MASTER_COMMAND + 1
 PIC_SLAVE_COMMAND   equ 0xa0
 PIC_SLAVE_DATA      equ PIC_SLAVE_COMMAND + 1

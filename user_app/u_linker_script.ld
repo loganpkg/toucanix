@@ -14,15 +14,34 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-
-#ifndef SCREEN_H
-#define SCREEN_H
-
-
-#include "stdint.h"
-
-void init_screen(void);
-void write_to_screen(char *buf, int s);
+/*
+ * Linker script. The user version is generated from the kernel version,
+ * so do not directly edit the user version.
+ */
 
 
-#endif
+
+
+USER_EXEC_START_VA = 0x400000;
+ALIGN_BYTES = 16;
+
+ENTRY(_start)
+OUTPUT_FORMAT(elf64-x86-64)
+
+SECTIONS {
+    /* Dot . is the output location counter. */
+
+    . = USER_EXEC_START_VA;
+
+    .text : { *(.text .text.*) }
+    PROVIDE(etext = .);
+
+    .rodata : { *(.rodata .rodata.*) }
+
+     . = ALIGN(ALIGN_BYTES);
+    .data : { *(.data .data.*) }
+    PROVIDE(edata = .);
+
+    .bss : { *(.bss .bss.*) }
+    PROVIDE(end = .);
+}

@@ -15,14 +15,11 @@
  */
 
 
-#ifndef SCREEN_H
-#define SCREEN_H
+#ifndef printf_H
+#define printf_H
 
 
-#include "stdint.h"
-
-void init_screen(void);
-void write_to_screen(char *buf, int s);
+int printf(const char *format, ...);
 
 
 #endif

@@ -1,8 +1,10 @@
 kernel
+user
 a.out
 *.bin
 *.img
 *~
 *.o
+*.a
 *.gch
 *.pch

@@ -15,7 +15,7 @@
 ;
 
 
-PIC_MASTER_COMMAND  equ 0x20
+%include "defs.inc"
 
 ; Operation Control Word 3.
 OCW_3_FIXED_BIT     equ 1 << 3
@@ -119,7 +119,11 @@ make_vector 19
 make_vector 32
 make_vector 39
 
-
+global system_software_interrupt
+system_software_interrupt:
+push NO_ERROR_CODE
+push SOFTWARE_INT
+jmp interrupt_common
 
 
 interrupt_common:

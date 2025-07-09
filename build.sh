@@ -47,7 +47,7 @@ c_options="$c_options"' -ffreestanding -fno-stack-protector -fno-builtin'
 c_options="$c_options"' -mcmodel=large -mno-red-zone'
 c_options="$c_options"' -nostdlib -mno-sse -mno-avx'
 
-ld_options='-z noexecstack --nostdlib -T linker_script.ld'
+ld_options='-z noexecstack --nostdlib'
 
 if [ "$ld" = ld ]
 then
@@ -57,10 +57,40 @@ fi
 
 lint_options='-boolops -predboolint +charintliteral -initallelements -globuse'
 lint_options="$lint_options"' -mustfreeonly -temptrans -usedef -compdef'
+lint_options="$lint_options"' -exportlocal'
 
 
 indent_options='-nut -kr -l79 -bbo'
 
+# Generate files.
+sed -E \
+    -e 's~;>~/*~g' \
+    -e 's~;<~ */~g' \
+    -e 's~;;~ *~g' \
+    -e 's~;\+ ~~g' \
+    -e 's~; (.+)~/* \1 */~' \
+    -e 's~(.+) equ (.+)~#define \1 \2~' \
+    defs.inc > defs.h
+
+sed -E \
+    -e 's~k_printf~printf~g' \
+    -e 's~#include "screen\.h"~~' \
+    -e 's~(defs\.h)~../\1~' \
+    -e 's~/\*\+ ~~g' \
+    -e 's~ \+ *\*/~~g' \
+    -e 's~^.*/\*-\*/$~~' \
+    -e 's~^.*write_to_screen.*$~~' \
+    k_printf.c > user_lib/printf.c
+
+sed -E \
+    's~k_printf~printf~gI' \
+    k_printf.h > user_lib/printf.h
+
+sed -E \
+    -e 's~^.*/\*-\*/$~~' \
+    -e 's~/\*\+ ~~g' \
+    -e 's~ \+\*/~~g' \
+    linker_script.ld > user_app/u_linker_script.ld
 
 # Export variables used in subshell.
 export cc lint indent c_options lint_options indent_options
@@ -74,7 +104,8 @@ sectors=63
 mbr_sector=1
 print_sectors=1
 loader_sectors=2
-# kernel_sectors=120
+kernel_sectors=120
+# user_sectors=12
 
 bytes_per_block=512
 
@@ -91,6 +122,7 @@ find . -type f ! -path '*.git*' \
     -o -name 'boot.img.lock'    \
     -o -name '*~'               \
     -o -name '*.o'              \
+    -o -name '*.a'              \
     -o -name '*.gch'            \
     -o -name '*.pch'            \
     \) -delete
@@ -117,7 +149,8 @@ dd if=/dev/zero of=boot.img bs="$bytes_per_block" \
 "$asm" -f elf64 -o interrupt_a.o interrupt.asm
 "$asm" -f elf64 -o asm_lib_a.o asm_lib.asm
 "$asm" -f elf64 -o memory_a.o memory.asm
-
+"$asm" -f elf64 -o user_lib/u_system_call_a.o user_lib/u_system_call.asm
+"$asm" -f elf64 -o user_app/_start_a.o user_app/_start.asm
 
 find . -type f ! -path '*.git*' \( -name '*.c' -o -name '*.h' \) -exec sh -c '
     set -u
@@ -137,13 +170,26 @@ find . -type f ! -path '*.git*' \( -name '*.c' -o -name '*.h' \) -exec sh -c '
 "$cc" -c $c_options -o screen_c.o screen.c
 "$cc" -c $c_options -o memory_c.o memory.c
 "$cc" -c $c_options -o process_c.o process.c
+"$cc" -c $c_options -o system_call_c.o system_call.c
+"$cc" -c $c_options -o user_lib/printf_c.o user_lib/printf.c
+"$cc" -c $c_options -o user_app/hello_world_c.o user_app/hello_world.c
 
 
-"$ld" $ld_options -o kernel \
-kernel_a.o kernel_c.o interrupt_a.o interrupt_c.o asm_lib_a.o k_printf_c.o \
-screen_c.o memory_a.o memory_c.o process_c.o
+# Create user lib archive.
+ar rsc user_lib/user_lib.a user_lib/u_system_call_a.o user_lib/printf_c.o
+
+
+"$ld" $ld_options -T linker_script.ld -o kernel \
+    kernel_a.o kernel_c.o interrupt_a.o interrupt_c.o asm_lib_a.o \
+    k_printf_c.o screen_c.o memory_a.o memory_c.o process_c.o system_call_c.o
+
+
+"$ld" $ld_options -T user_app/u_linker_script.ld -o user_app/user \
+    user_lib/user_lib.a user_app/_start_a.o user_app/hello_world_c.o
+
 
 "$objcopy" -O binary kernel kernel.bin
+"$objcopy" -O binary user_app/user user_app/user.bin
 
 
 dd if=mbr.bin of=boot.img conv=notrunc
@@ -156,6 +202,10 @@ dd if=loader.bin of=boot.img bs="$bytes_per_block" \
 
 dd if=kernel.bin of=boot.img bs="$bytes_per_block" \
     seek="$((mbr_sector + print_sectors + loader_sectors))" conv=notrunc
+
+dd if=user_app/user.bin of=boot.img bs="$bytes_per_block" \
+    seek="$((mbr_sector + print_sectors + loader_sectors + kernel_sectors))" \
+    conv=notrunc
 
 qemu-system-x86_64 -cpu kvm64,pdpe1gb -m 1024 \
     -drive file=boot.img,index=0,media=disk,format=raw

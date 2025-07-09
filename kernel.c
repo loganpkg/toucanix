@@ -37,9 +37,9 @@ void kernel_main(void)
     r = print_memory_map_pa();
     assert(r == 0);
 
-    k_printf("etext: %lx\n", (unsigned long) &etext);
-    k_printf("edata: %lx\n", (unsigned long) &edata);
-    k_printf("end: %lx\n", (unsigned long) &end);
+    (void) k_printf("etext: %lx\n", (unsigned long) &etext);
+    (void) k_printf("edata: %lx\n", (unsigned long) &edata);
+    (void) k_printf("end: %lx\n", (unsigned long) &end);
 
     r = init_free_physical_memory();
     assert(r == 0);
@@ -77,7 +77,7 @@ void kernel_main(void)
     r = check_physical_memory();
     assert(r == 0);
 
-    k_printf("init process...\n");
+    (void) k_printf("Initialise process...\n");
 
     r = start_init_process();
     assert(r == 0);

@@ -41,7 +41,6 @@
 
 #define KERNEL_PA 0x200000
 #define KERNEL_SPACE_VA 0xffff800000000000
-#define KERNEL_VA pa_to_va(KERNEL_PA)
 
 #define VIDEO_PA 0xb8000
 #define VIDEO_VA pa_to_va(VIDEO_PA)

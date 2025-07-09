@@ -20,6 +20,8 @@
 #include "interrupt.h"
 #include "k_printf.h"
 #include "screen.h"
+#include "system_call.h"
+#include "defs.h"
 
 
 #define CODE_SEGMENT_INDEX 1
@@ -29,6 +31,9 @@
 #define INTERRUPT_GATE_TYPE 0xe
 
 #define PRESENT_BIT_SET (1 << 7)
+#define DESCRIPTOR_PRIVILEGE_LEVEL_USER (USER_RING << 5)
+
+#define SOFTWARE_INT 0x80
 
 #define CPL_MASK 3
 
@@ -85,6 +90,8 @@ extern void vector_19(void);
 extern void vector_32(void);
 extern void vector_39(void);
 
+extern void system_software_interrupt(void);
+
 void load_idt(struct idt_descriptor *idt_desc_p);
 int is_spurious_interrupt(void);
 void acknowledge_interrupt(void);
@@ -139,6 +146,12 @@ void init_idt(void)
     set_isr(32);
     set_isr(39);
 
+    update_idt_with_isr(idt + SOFTWARE_INT,
+                        (uint64_t) system_software_interrupt,
+                        (uint8_t) (PRESENT_BIT_SET |
+                                   DESCRIPTOR_PRIVILEGE_LEVEL_USER |
+                                   INTERRUPT_GATE_TYPE));
+
     idt_desc.idt_size_minus_1 =
         (IDT_NUM_ENTRIES * sizeof(struct idt_entry)) - 1;
     idt_desc.address_of_idt = (uint64_t) idt;
@@ -173,6 +186,10 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
         else
             acknowledge_interrupt();
 
+        break;
+
+    case SOFTWARE_INT:
+        system_call(isf_va);
         break;
 
     default:
@@ -237,13 +254,15 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
         *((uint8_t *) v + 1) = RED;
 
 
-        k_printf("Interrupt Handler:\n");
-        k_printf("    Vector Number: %lu\n",
-                 (unsigned long) isf_va->vector_number);
-        k_printf("    Error Code: %lu\n", (unsigned long) isf_va->error_code);
-        k_printf("    Ring: %lu\n", (unsigned long) (isf_va->cs & CPL_MASK));
-        k_printf("    rip: %lx\n", (unsigned long) isf_va->rip);
-        k_printf("    cr2: %lx\n", (unsigned long) get_cr2());
+        (void) k_printf("Interrupt Handler:\n");
+        (void) k_printf("    Vector Number: %lu\n",
+                        (unsigned long) isf_va->vector_number);
+        (void) k_printf("    Error Code: %lu\n",
+                        (unsigned long) isf_va->error_code);
+        (void) k_printf("    Ring: %lu\n",
+                        (unsigned long) (isf_va->cs & CPL_MASK));
+        (void) k_printf("    rip: %lx\n", (unsigned long) isf_va->rip);
+        (void) k_printf("    cr2: %lx\n", (unsigned long) get_cr2());
 
 
         while (1);

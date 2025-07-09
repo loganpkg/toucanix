@@ -20,6 +20,8 @@
 #include "asm_lib.h"
 #include "interrupt.h"
 #include "memory.h"
+#include "k_printf.h"
+#include "defs.h"
 
 
 #define MAX_PROCESSES 1024
@@ -31,8 +33,6 @@
 #define UNUSED_PROCESS 0
 #define INIT_PROCESS 1
 
-
-#define USER_RING 3
 
 /* GDT. */
 #define USER_CODE_SEGMENT_INDEX 2
@@ -60,15 +60,13 @@ struct task_state_segment {
     uint32_t reserved;
     uint64_t rsp0;
     unsigned char unused[TSS_SIZE - sizeof(uint32_t) - sizeof(uint64_t)];
-} __attribute__((packed));
+}
+__attribute__((packed));
 
 
 static struct process_control_block pcb[MAX_PROCESSES];
 
 extern struct task_state_segment tss;
-
-
-static int main(void);
 
 
 static int get_unused_process_index(void)
@@ -110,7 +108,8 @@ int start_init_process(void)
 
     if (!
         (pr->pml4_pa =
-         create_user_virtual_memory_space((uint64_t) main, 10485773))) {
+         create_user_virtual_memory_space(pa_to_va(USER_ORIGINAL_PA),
+                                          USER_SIZE))) {
         free_page_pa(p);
         return -1;
     }
@@ -131,15 +130,9 @@ int start_init_process(void)
 
     switch_pml4_pa(pr->pml4_pa);
 
+    (void) k_printf("About to enter process...\n");
+
     enter_process(pr->isf_va);
 
-    return 0;
-}
-
-static int main(void)
-{
-    char x = 'X';
-    ++x;
-    *((char *) VIDEO_VA + 10) = x;
     return 0;
 }

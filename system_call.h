@@ -15,14 +15,11 @@
  */
 
 
-#ifndef SCREEN_H
-#define SCREEN_H
+#ifndef SYSTEM_CALL_H
+#define SYSTEM_CALL_H
 
+#include "interrupt.h"
 
-#include "stdint.h"
-
-void init_screen(void);
-void write_to_screen(char *buf, int s);
-
+void system_call(struct interrupt_stack_frame *isf_va);
 
 #endif

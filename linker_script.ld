@@ -14,10 +14,15 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+/*
+ * Linker script. The user version is generated from the kernel version,
+ * so do not directly edit the user version.
+ */
 
-KERNEL_PA = 0x200000;
-KERNEL_SPACE_VA = 0xffff800000000000;
-KERNEL_VA = KERNEL_SPACE_VA + KERNEL_PA;
+KERNEL_PA = 0x200000; /*-*/
+KERNEL_SPACE_VA = 0xffff800000000000; /*-*/
+KERNEL_VA = KERNEL_SPACE_VA + KERNEL_PA; /*-*/
+/*+ USER_EXEC_START_VA = 0x400000; +*/
 ALIGN_BYTES = 16;
 
 ENTRY(_start)
@@ -25,7 +30,8 @@ OUTPUT_FORMAT(elf64-x86-64)
 
 SECTIONS {
     /* Dot . is the output location counter. */
-    . = KERNEL_VA;
+    . = KERNEL_VA; /*-*/
+    /*+ . = USER_EXEC_START_VA; +*/
 
     .text : { *(.text .text.*) }
     PROVIDE(etext = .);

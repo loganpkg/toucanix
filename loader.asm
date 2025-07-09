@@ -16,7 +16,7 @@
 
 ; Loader for Toucanix.
 
-%include "defs.asm"
+%include "defs.inc"
 
 ; System Memory Map.
 MEMORY_MAP_ENTRY_COUNT_PA equ 0x9000
@@ -147,9 +147,33 @@ mov si, kernel_disk_address_packet
 mov ah, EXTENDED_READ_FUNCTION_CODE
 int BIOS_DISK_SERVICES
 jc error_e
-jmp kernel_loaded
 
 
+; Load user bin.
+mov dl, DISK
+xor ax, ax
+mov ds, ax
+mov si, user_disk_address_packet
+mov ah, EXTENDED_READ_FUNCTION_CODE
+int BIOS_DISK_SERVICES
+jc error_e
+
+
+kernel_loaded:
+
+; Prepare for Protected Mode.
+cli
+lgdt [GDT_PM_descriptor]
+lidt [IDT_PM_descriptor]
+
+mov eax, cr0
+or eax, PROTECTED_MODE
+mov cr0, eax
+
+jmp CODE_SELECTOR:protected_mode_start
+
+
+; Error cases.
 error_a:
 mov si, memory_map_failed
 jmp error
@@ -176,18 +200,6 @@ hlt
 jmp .done
 
 
-kernel_loaded:
-
-; Prepare for Protected Mode.
-cli
-lgdt [GDT_PM_descriptor]
-lidt [IDT_PM_descriptor]
-
-mov eax, cr0
-or eax, PROTECTED_MODE
-mov cr0, eax
-
-jmp CODE_SELECTOR:protected_mode_start
 
 
 [BITS 32]
@@ -294,6 +306,15 @@ db 0
 dw KERNEL_SECTORS
 dw KERNEL_ORIGINAL_OFFSET, KERNEL_ORIGINAL_SEGMENT
 dq KERNEL_START_SECTOR
+
+
+; For reading user bin into memory.
+user_disk_address_packet:
+db DISK_PA_PACKET_SIZE
+db 0
+dw USER_SECTORS
+dw USER_ORIGINAL_OFFSET, USER_ORIGINAL_SEGMENT
+dq USER_START_SECTOR
 
 
 global_descriptor_table_PM:

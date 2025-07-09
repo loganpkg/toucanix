@@ -149,14 +149,14 @@ int check_physical_memory(void)
 
     while (h != 0) {
         if (h % PAGE_SIZE) {
-            k_printf("ERROR: Physical memory: Page not aligned: %lx\n",
-                     (unsigned long) h);
+            (void) k_printf("ERROR: Physical memory: Page not aligned: %lx\n",
+                            (unsigned long) h);
             return -1;
         }
 
         if (*(uint64_t *) pa_to_va(h + sizeof(uint64_t)) !=
             (uint64_t) FREE_PAGE_SIGNATURE) {
-            k_printf("ERROR: Physical memory: Invalid signature\n");
+            (void) k_printf("ERROR: Physical memory: Invalid signature\n");
             return -1;
         }
 
@@ -165,15 +165,17 @@ int check_physical_memory(void)
     }
 
     if (check_num_free_pages != num_free_pages) {
-        k_printf("ERROR: Physical memory: Mismatch in number of free pages\n");
-        k_printf("Checked: %lu, Reported: %lu\n",
-                 (unsigned long) check_num_free_pages,
-                 (unsigned long) num_free_pages);
+        (void)
+            k_printf
+            ("ERROR: Physical memory: Mismatch in number of free pages\n");
+        (void) k_printf("Checked: %lu, Reported: %lu\n",
+                        (unsigned long) check_num_free_pages,
+                        (unsigned long) num_free_pages);
 
         return -1;
     }
 
-    k_printf("Memory check OK\n");
+    (void) k_printf("Memory check OK\n");
     return 0;
 }
 

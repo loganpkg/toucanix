@@ -16,7 +16,7 @@
 
 ; Master boot record for Toucanix.
 
-%include "defs.asm"
+%include "defs.inc"
 
 
 BIOS_VIDEO_SERVICES equ 0x10
@@ -99,7 +99,7 @@ jc error_p
 xor ax, ax
 mov ds, ax
 mov si, welcome_str
-mov bl, GREEN
+mov bl, DEFAULT_COLOUR
 call PRINT_FUNC
 
 

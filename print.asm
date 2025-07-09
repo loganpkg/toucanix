@@ -17,7 +17,7 @@
 ; Print in real mode for Toucanix.
 
 
-%include "defs.asm"
+%include "defs.inc"
 
 
 SCREEN_WIDTH equ 80

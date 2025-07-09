@@ -42,3 +42,16 @@ Abbreviations
 | exec         | Executable       |
 | exp          | Exponent         |
 | PM           | Protected Mode   |
+
+
+Acknowledgements
+----------------
+
+Firstly, thanks be to the Father, the Son, and the Holy Spirit, for giving me
+the grace and strength to be the best that I can. All glory and honour is
+yours.
+
+Thank you to "x-BIT Development" for the course on Udemy called
+"Build your own 64-bit operating system - for the x86 architecture."
+I highly recommend this course for anyone doing OS dev. It guided me well on
+the journey.

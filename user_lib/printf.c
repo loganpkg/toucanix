@@ -24,11 +24,11 @@
 #include "stdarg.h"
 #include "stdint.h"
 
-#include "screen.h"
-#include "defs.h"
+
+#include "../defs.h"
 
 
-/*+ int u_system_write(uint8_t fd, const void *buf, uint64_t s); +*/
+int u_system_write(uint8_t fd, const void *buf, uint64_t s);
 
 
 static int print_str(char *buf, int *used, const char *str)
@@ -103,7 +103,7 @@ static int print_hex(char *buf, int *used, uint64_t x)
 }
 
 
-int k_printf(const char *format, ...)
+int printf(const char *format, ...)
 {
     va_list a;
     char buf[BUF_SIZE];
@@ -165,7 +165,7 @@ int k_printf(const char *format, ...)
 
     va_end(a);
 
-    write_to_screen(buf, used); /*-*/
-    return used; /*-*/
-    /*+ return u_system_write(STDOUT_FILENO, buf, (uint64_t) used); + */
+
+
+    return u_system_write(STDOUT_FILENO, buf, (uint64_t) used);
 }
