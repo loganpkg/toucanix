@@ -15,11 +15,13 @@
  */
 
 
+#include "defs.h"
 #include "address.h"
 #include "assert.h"
 #include "asm_lib.h"
 #include "interrupt.h"
-#include "memory.h"
+#include "allocator.h"
+#include "paging.h"
 #include "k_printf.h"
 #include "process.h"
 #include "screen.h"
@@ -29,11 +31,12 @@ extern char etext, edata, end;
 void kernel_main(void)
 {
     int r;
-    uint64_t pml4_pa_A, pml4_pa_B;
+    uint64_t pml4_pa;
 
     init_idt();
     init_screen();
 
+    (void) k_printf("Physical memory map:\n");
     r = print_memory_map_pa();
     assert(r == 0);
 
@@ -47,8 +50,8 @@ void kernel_main(void)
     r = check_physical_memory();
     assert(r == 0);
 
-    pml4_pa_A = create_kernel_virtual_memory_space();
-    assert(pml4_pa_A != 0);
+    pml4_pa = create_kernel_virtual_memory_space();
+    assert(pml4_pa != 0);
 
     r = report_physical_memory();
     assert(r == 0);
@@ -56,26 +59,7 @@ void kernel_main(void)
     r = check_physical_memory();
     assert(r == 0);
 
-    switch_pml4_pa(pml4_pa_A);
-
-    pml4_pa_B = create_kernel_virtual_memory_space();
-    assert(pml4_pa_B != 0);
-
-    r = report_physical_memory();
-    assert(r == 0);
-
-    r = check_physical_memory();
-    assert(r == 0);
-
-    switch_pml4_pa(pml4_pa_B);
-
-    free_4_level_paging(pml4_pa_A);
-
-    r = report_physical_memory();
-    assert(r == 0);
-
-    r = check_physical_memory();
-    assert(r == 0);
+    switch_pml4_pa(pml4_pa);
 
     (void) k_printf("Initialise process...\n");
 

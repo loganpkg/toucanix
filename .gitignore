@@ -1,5 +1,6 @@
 kernel
-user
+user_a
+user_b
 a.out
 *.bin
 *.img

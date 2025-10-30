@@ -17,10 +17,11 @@
 
 #include "stdint.h"
 
+#include "defs.h"
 #include "address.h"
 #include "asm_lib.h"
 #include "screen.h"
-#include "defs.h"
+
 
 
 #define SCREEN_WIDTH 80
@@ -28,12 +29,6 @@
 #define BYTES_PER_SCREEN_CHAR 2
 #define BYTES_PER_LINE (SCREEN_WIDTH * BYTES_PER_SCREEN_CHAR)
 
-
-#define MBR_PA 0x7c00
-#define MBR_SECTOR 1
-#define BYTES_PER_SECTOR 512
-#define PRINT_PA (MBR_PA + (MBR_SECTOR * BYTES_PER_SECTOR))
-#define PRINT_VA (KERNEL_SPACE_VA + PRINT_PA)
 #define ROW_VA PRINT_VA
 #define COL_VA (PRINT_VA + 4)
 

@@ -15,16 +15,17 @@
  */
 
 
+#include "defs.h"
 #include "address.h"
 #include "asm_lib.h"
 #include "interrupt.h"
+#include "process.h"
 #include "k_printf.h"
 #include "screen.h"
 #include "system_call.h"
-#include "defs.h"
 
 
-#define CODE_SEGMENT_INDEX 1
+
 #define CODE_SELECTOR (CODE_SEGMENT_INDEX << 3)
 
 #define IDT_NUM_ENTRIES 256
@@ -32,8 +33,6 @@
 
 #define PRESENT_BIT_SET (1 << 7)
 #define DESCRIPTOR_PRIVILEGE_LEVEL_USER (USER_RING << 5)
-
-#define SOFTWARE_INT 0x80
 
 #define CPL_MASK 3
 
@@ -175,6 +174,8 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
         *((uint8_t *) v + 1) = BLUE;
 
         acknowledge_interrupt();
+        schedule();
+
         break;
     case 39:
         v = (char *) VIDEO_VA + 2;

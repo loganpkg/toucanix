@@ -15,11 +15,19 @@
  */
 
 
-#include "../user_lib/printf.h"
+#ifndef PAGING_H
+#define PAGING_H
+
+#include "stdint.h"
+
+/* From paging.asm file. */
+void switch_pml4_pa(uint64_t new_pml4_start_pa);
+
+/* From paging.c file. */
+void free_4_level_paging(uint64_t pml4_pa);
+uint64_t create_kernel_virtual_memory_space(void);
+uint64_t create_user_virtual_memory_space(uint64_t exec_start_va,
+                                          uint64_t exec_size);
 
 
-int main(void)
-{
-    printf("Hello world!\n");
-    return 0;
-}
+#endif

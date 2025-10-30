@@ -23,44 +23,62 @@ set -x
 set -e
 set -u
 
-# Tools.
-asm=nasm
-# asm=yasm
 
-cc=clang
-# cc=gcc
-
-ld=ld.lld
-# ld=ld
-
-objcopy=objcopy
-
-lint=splint
-
-indent=indent
+. ./tools.sh
 
 
-# Options.
-# -DNDEBUG
-c_options='-ansi -O0 -Wall -Wextra -pedantic'
-c_options="$c_options"' -ffreestanding -fno-stack-protector -fno-builtin'
-c_options="$c_options"' -mcmodel=large -mno-red-zone'
-c_options="$c_options"' -nostdlib -mno-sse -mno-avx'
+get_var() {
+    code=''
+    # shellcheck disable=SC2016
+    code=$(grep -E "$1 +equ" defs.inc | sed -E 's~ +equ +(.+)~="$((\1))"~')
+    if [ -z "$code" ]
+    then
+        printf '%s: ERROR: Cannot find definition for variable: %s\n' \
+            "$0" "$1" 1>&2
 
-ld_options='-z noexecstack --nostdlib'
+        exit 1
+    fi
 
-if [ "$ld" = ld ]
-then
-    ld_options='--no-warn-rwx-segments '"$ld_options"
-fi
-
-
-lint_options='-boolops -predboolint +charintliteral -initallelements -globuse'
-lint_options="$lint_options"' -mustfreeonly -temptrans -usedef -compdef'
-lint_options="$lint_options"' -exportlocal'
+    printf '%s\n' "$code"
+    eval "$code"
+}
 
 
-indent_options='-nut -kr -l79 -bbo'
+clean_up() {
+find . -type f ! -path '*.git*' \
+    \( -name 'kernel'           \
+    -o -name 'boot.img.lock'    \
+    -o -name 'a.out'            \
+    -o -name '*~'               \
+    -o -name '*.o'              \
+    -o -name '*.a'              \
+    -o -name '*.gch'            \
+    -o -name '*.pch'            \
+    \) -delete
+}
+
+
+get_var CYLINDERS
+get_var HEADS
+get_var SECTORS
+
+get_var MBR_SECTOR
+get_var PRINT_SECTORS
+get_var LOADER_SECTORS
+get_var KERNEL_SECTORS
+get_var USER_A_SECTORS
+get_var USER_B_SECTORS
+
+get_var BYTES_PER_SECTOR
+
+get_var PRINT_START_SECTOR
+get_var LOADER_START_SECTOR
+get_var KERNEL_START_SECTOR
+get_var USER_A_START_SECTOR
+get_var USER_B_START_SECTOR
+
+
+
 
 # Generate files.
 sed -E \
@@ -69,8 +87,13 @@ sed -E \
     -e 's~;;~ *~g' \
     -e 's~;\+ ~~g' \
     -e 's~; (.+)~/* \1 */~' \
-    -e 's~(.+) equ (.+)~#define \1 \2~' \
-    defs.inc > defs.h
+    -e 's~(.*[^ ])( *) equ( +)(.*)~#define \1\2\3\4~' \
+    defs.inc \
+    | sed -E \
+        -e 's~(#define +[^ ]+ +)(.*[^A-Za-z0-9_ ].*)~\1(\2)~' \
+        -e 's~(NUM_GIB_MAPPED << EXP_1_GIB)~(uint64_t) \1~' \
+        > defs.h
+
 
 sed -E \
     -e 's~k_printf~printf~g' \
@@ -90,24 +113,9 @@ sed -E \
     -e 's~^.*/\*-\*/$~~' \
     -e 's~/\*\+ ~~g' \
     -e 's~ \+\*/~~g' \
-    linker_script.ld > user_app/u_linker_script.ld
-
-# Export variables used in subshell.
-export cc lint indent c_options lint_options indent_options
+    linker_script.ld > user_lib/u_linker_script.ld
 
 
-# Disk.
-cylinders=20
-heads=16
-sectors=63
-
-mbr_sector=1
-print_sectors=1
-loader_sectors=2
-kernel_sectors=120
-# user_sectors=12
-
-bytes_per_block=512
 
 
 # Fix permissions.
@@ -116,16 +124,7 @@ find . -type f ! -path '*.git*' ! -name '*.sh' -exec chmod 600 '{}' \;
 find . -type f ! -path '*.git*'   -name '*.sh' -exec chmod 700 '{}' \;
 
 
-# Clean up.
-find . -type f ! -path '*.git*' \
-    \( -name 'kernel'           \
-    -o -name 'boot.img.lock'    \
-    -o -name '*~'               \
-    -o -name '*.o'              \
-    -o -name '*.a'              \
-    -o -name '*.gch'            \
-    -o -name '*.pch'            \
-    \) -delete
+clean_up
 
 
 if grep -rEnI --exclude-dir=.git '.{80}'
@@ -135,77 +134,94 @@ then
 fi
 
 
-shellcheck -e SC2086 build.sh
+shellcheck build.sh tools.sh
 
 
-dd if=/dev/zero of=boot.img bs="$bytes_per_block" \
-    count="$((cylinders * heads * sectors))"
+cc -ansi -pedantic -Wall -Wextra show_defs.c
+./a.out | column -s ':' -t -R 2
 
-"$asm" -f bin -o mbr.bin mbr.asm
-"$asm" -f bin -o print.bin print.asm
-"$asm" -f bin -o loader.bin loader.asm
 
-"$asm" -f elf64 -o kernel_a.o kernel.asm
-"$asm" -f elf64 -o interrupt_a.o interrupt.asm
-"$asm" -f elf64 -o asm_lib_a.o asm_lib.asm
-"$asm" -f elf64 -o memory_a.o memory.asm
-"$asm" -f elf64 -o user_lib/u_system_call_a.o user_lib/u_system_call.asm
-"$asm" -f elf64 -o user_app/_start_a.o user_app/_start.asm
+dd if=/dev/zero of=boot.img bs="$BYTES_PER_SECTOR" \
+    count="$((CYLINDERS * HEADS * SECTORS))"
+
+asm_op -f bin -o mbr.bin mbr.asm
+asm_op -f bin -o print.bin print.asm
+asm_op -f bin -o loader.bin loader.asm
+
+asm_op -f elf64 -o kernel_a.o kernel.asm
+asm_op -f elf64 -o interrupt_a.o interrupt.asm
+asm_op -f elf64 -o asm_lib_a.o asm_lib.asm
+asm_op -f elf64 -o paging_a.o paging.asm
+asm_op -f elf64 -o user_lib/u_system_call_a.o user_lib/u_system_call.asm
+asm_op -f elf64 -o user_lib/_start_a.o user_lib/_start.asm
 
 find . -type f ! -path '*.git*' \( -name '*.c' -o -name '*.h' \) -exec sh -c '
     set -u
+    . ./tools.sh
     fn="$1"
-    if ! "$cc" -c $c_options "$fn"
+    if ! cc_op -c "$fn"
     then
         exit 1
     fi
-    "$indent" $indent_options "$fn"
-    "$lint" $lint_options "$fn"
+    indent_op "$fn"
+    lint_op "$fn"
 ' sh '{}' \;
 
 
-"$cc" -c $c_options -o kernel_c.o kernel.c
-"$cc" -c $c_options -o interrupt_c.o interrupt.c
-"$cc" -c $c_options -o k_printf_c.o k_printf.c
-"$cc" -c $c_options -o screen_c.o screen.c
-"$cc" -c $c_options -o memory_c.o memory.c
-"$cc" -c $c_options -o process_c.o process.c
-"$cc" -c $c_options -o system_call_c.o system_call.c
-"$cc" -c $c_options -o user_lib/printf_c.o user_lib/printf.c
-"$cc" -c $c_options -o user_app/hello_world_c.o user_app/hello_world.c
+cc_op -c -o kernel_c.o kernel.c
+cc_op -c -o interrupt_c.o interrupt.c
+cc_op -c -o k_printf_c.o k_printf.c
+cc_op -c -o screen_c.o screen.c
+cc_op -c -o allocator_c.o allocator.c
+cc_op -c -o paging_c.o paging.c
+cc_op -c -o process_c.o process.c
+cc_op -c -o system_call_c.o system_call.c
+cc_op -c -o user_lib/printf_c.o user_lib/printf.c
+cc_op -c -o user_app_a/hello_world_c.o user_app_a/hello_world.c
+cc_op -c -o user_app_b/hello_world_c.o user_app_b/hello_world.c
 
 
 # Create user lib archive.
 ar rsc user_lib/user_lib.a user_lib/u_system_call_a.o user_lib/printf_c.o
 
 
-"$ld" $ld_options -T linker_script.ld -o kernel \
+ld_op -T linker_script.ld -o kernel \
     kernel_a.o kernel_c.o interrupt_a.o interrupt_c.o asm_lib_a.o \
-    k_printf_c.o screen_c.o memory_a.o memory_c.o process_c.o system_call_c.o
+    k_printf_c.o screen_c.o allocator_c.o paging_a.o paging_c.o process_c.o \
+    system_call_c.o
 
 
-"$ld" $ld_options -T user_app/u_linker_script.ld -o user_app/user \
-    user_lib/user_lib.a user_app/_start_a.o user_app/hello_world_c.o
+ld_op -T user_lib/u_linker_script.ld -o user_app_a/user_a \
+    user_lib/user_lib.a user_lib/_start_a.o user_app_a/hello_world_c.o
+
+ld_op -T user_lib/u_linker_script.ld -o user_app_b/user_b \
+    user_lib/user_lib.a user_lib/_start_a.o user_app_b/hello_world_c.o
 
 
-"$objcopy" -O binary kernel kernel.bin
-"$objcopy" -O binary user_app/user user_app/user.bin
+objcopy_op -O binary kernel kernel.bin
+objcopy_op -O binary user_app_a/user_a user_app_a/user_a.bin
+objcopy_op -O binary user_app_b/user_b user_app_b/user_b.bin
 
 
 dd if=mbr.bin of=boot.img conv=notrunc
 
-dd if=print.bin of=boot.img bs="$bytes_per_block" seek="$mbr_sector" \
-    conv=notrunc
+dd if=print.bin of=boot.img bs="$BYTES_PER_SECTOR" \
+    seek="$PRINT_START_SECTOR" conv=notrunc
 
-dd if=loader.bin of=boot.img bs="$bytes_per_block" \
-    seek="$((mbr_sector + print_sectors))" conv=notrunc
+dd if=loader.bin of=boot.img bs="$BYTES_PER_SECTOR" \
+    seek="$LOADER_START_SECTOR" conv=notrunc
 
-dd if=kernel.bin of=boot.img bs="$bytes_per_block" \
-    seek="$((mbr_sector + print_sectors + loader_sectors))" conv=notrunc
+dd if=kernel.bin of=boot.img bs="$BYTES_PER_SECTOR" \
+    seek="$KERNEL_START_SECTOR" conv=notrunc
 
-dd if=user_app/user.bin of=boot.img bs="$bytes_per_block" \
-    seek="$((mbr_sector + print_sectors + loader_sectors + kernel_sectors))" \
-    conv=notrunc
+dd if=user_app_a/user_a.bin of=boot.img bs="$BYTES_PER_SECTOR" \
+    seek="$USER_A_START_SECTOR" conv=notrunc
+
+dd if=user_app_b/user_b.bin of=boot.img bs="$BYTES_PER_SECTOR" \
+    seek="$USER_B_START_SECTOR" conv=notrunc
+
 
 qemu-system-x86_64 -cpu kvm64,pdpe1gb -m 1024 \
     -drive file=boot.img,index=0,media=disk,format=raw
+
+clean_up

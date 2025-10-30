@@ -19,5 +19,6 @@
 #define PROCESS_H
 
 int start_init_process(void);
+void schedule(void);
 
 #endif

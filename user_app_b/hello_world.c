@@ -15,27 +15,16 @@
  */
 
 
-#ifndef MEMORY_H
-#define MEMORY_H
-
-#include "stdint.h"
+#include "../user_lib/printf.h"
 
 
-/* From memory.asm file. */
-void switch_pml4_pa(uint64_t new_pml4_start_pa);
+int main(void)
+{
+    unsigned long i = 0;
+    while (1) {
+        if (!(i % 10000000))
+            printf("User app B!\n");
 
-/* From memory.c file. */
-int print_memory_map_pa(void);
-void free_page_pa(uint64_t start_page_pa);
-uint64_t allocate_page_pa(void);
-int init_free_physical_memory(void);
-int report_physical_memory(void);
-int check_physical_memory(void);
-void free_4_level_paging(uint64_t pml4_pa);
-uint64_t create_kernel_virtual_memory_space(void);
-uint64_t create_user_virtual_memory_space(uint64_t exec_start_va,
-                                          uint64_t exec_size);
-
-
-
-#endif
+        ++i;
+    }
+}

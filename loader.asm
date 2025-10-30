@@ -18,10 +18,6 @@
 
 %include "defs.inc"
 
-; System Memory Map.
-MEMORY_MAP_ENTRY_COUNT_PA equ 0x9000
-DWORD_SIZE equ 4
-MEMORY_MAP_PA equ MEMORY_MAP_ENTRY_COUNT_PA + DWORD_SIZE
 
 BIOS_SYSTEM_SERVICES equ 0x15
 SYSTEM_PA_MAP_FUNCTION_CODE equ 0xe820
@@ -41,12 +37,12 @@ LONG_MODE_SUPPORT     equ 1 << 29
 ; PM = Protected Mode.
 
 CODE_ACCESS_BYTE_PM equ PRESENT_BIT_SET \
-    | TYPE_IS_CODE_OR_DATA_SEGMENT      \
+    | CODE_OR_DATA_SEGMENT_TYPE         \
     | EXEC                              \
     | CODE_READ_OR_DATA_WRITE_ACCESS
 
 DATA_ACCESS_BYTE_PM equ PRESENT_BIT_SET \
-    | TYPE_IS_CODE_OR_DATA_SEGMENT   \
+    | CODE_OR_DATA_SEGMENT_TYPE         \
     | CODE_READ_OR_DATA_WRITE_ACCESS
 
 FLAGS_NIBBLE_PM equ GRANULARITY_4_KIB \
@@ -63,6 +59,7 @@ DATA_SELECTOR equ DATA_SEGMENT_INDEX << 3
 
 ; IDT = Interrupt Descriptor Table.
 IDT_PM_INVALID_SIZE_MINUS_1 equ 0
+ZERO_PA equ 0
 IDT_PM_INVALID_PA equ ZERO_PA
 
 PROTECTED_MODE equ 1
@@ -78,22 +75,14 @@ PAGING equ 1 << 31
 
 ; PML4 = Page Map Level 4 (table).
 ; PDPT = Page Directory Pointer Table.
-ZERO_PA equ 0
-PML4_SIZE equ 0x1000
-PDPT_SIZE equ 0x1000
-PDPT_PA equ PML4_PA + PML4_SIZE
 
 LOWER_BIT_OF_PML4_COMPONENT equ 39
 LOWER_9_BITS equ 0x1ff
-BYTES_PER_PML4_ENTRY equ 8
 
 PML4E_KERNEL_SPACE equ PML4_PA \
     + (KERNEL_SPACE_VA >> LOWER_BIT_OF_PML4_COMPONENT & LOWER_9_BITS) \
-    * BYTES_PER_PML4_ENTRY
+    * BYTES_PER_PAGE_TABLE_ENTRY
 
-BYTES_PER_PDPT_ENTRY equ 8
-NUM_GIB_MAPPED equ PDPT_SIZE / BYTES_PER_PDPT_ENTRY
-EXP_1_GIB equ 30
 
 PAGE_PRESENT    equ 1
 READ_AND_WRITE  equ 1 << 1
@@ -149,14 +138,24 @@ int BIOS_DISK_SERVICES
 jc error_e
 
 
-; Load user bin.
+; Load user A bin.
 mov dl, DISK
 xor ax, ax
 mov ds, ax
-mov si, user_disk_address_packet
+mov si, user_a_disk_address_packet
 mov ah, EXTENDED_READ_FUNCTION_CODE
 int BIOS_DISK_SERVICES
-jc error_e
+jc error_f
+
+
+; Load user B bin.
+mov dl, DISK
+xor ax, ax
+mov ds, ax
+mov si, user_b_disk_address_packet
+mov ah, EXTENDED_READ_FUNCTION_CODE
+int BIOS_DISK_SERVICES
+jc error_g
 
 
 kernel_loaded:
@@ -175,20 +174,27 @@ jmp CODE_SELECTOR:protected_mode_start
 
 ; Error cases.
 error_a:
-mov si, memory_map_failed
-jmp error
+    mov si, memory_map_failed
+    jmp error
 error_b:
-mov si, no_extended_features
-jmp error
+    mov si, no_extended_features
+    jmp error
 error_c:
-mov si, no_long_mode
-jmp error
+    mov si, no_long_mode
+    jmp error
 error_d:
-mov si, no_gigabyte_page
-jmp error
+    mov si, no_gigabyte_page
+    jmp error
 error_e:
-mov si, kernel_load_failed
-jmp error
+    mov si, kernel_load_failed
+    jmp error
+error_f:
+    mov si, user_a_load_failed
+    jmp error
+error_g:
+    mov si, user_b_load_failed
+    jmp error
+
 
 error:
 xor ax, ax
@@ -218,15 +224,25 @@ setup_paging:
 cld
 mov edi, PML4_PA
 xor eax, eax
-mov ecx, (PML4_SIZE + PDPT_SIZE) / BYTES_PER_DOUBLE_WORD
+; Clear enough space to fit the PML4 and one PDPT.
+mov ecx, PAGE_TABLE_SIZE * 2 / DWORD_SIZE
 rep stosd
 
-
-mov dword [PML4E_IDENTITY], \
+; The PML4 entry for the identity mapping is the first one.
+mov dword [PML4_PA], \
     PDPT_PA | READ_AND_WRITE | PAGE_PRESENT
 
 mov dword [PML4E_KERNEL_SPACE], \
     PDPT_PA | READ_AND_WRITE | PAGE_PRESENT
+
+; The same PDPT is used for both the identity and the kernel space mappings.
+; There is only one PML4. Each PML4E (E for entry) points to a PDPT.
+; In this case both the identity and kernel space PML4E's point to the
+; same PDPT (the other PML4E's are not used).
+; Now, each PDPTE points to one GiB of memory. So, by filling
+; in a complete PDPT, 512GiB of memory will be mapped (completed in a later
+; step). The first 512GiB of physical memory is identity mapped and mapped
+; into the kernel space.
 
 ; First GiB only.
 mov dword [PDPT_PA], \
@@ -263,7 +279,7 @@ mov rsp, MBR_PA
 
 complete_paging:
 mov rcx, 1 ; First GiB has already been done.
-mov rdi, PDPT_PA + BYTES_PER_PDPT_ENTRY
+mov rdi, PDPT_PA + BYTES_PER_PAGE_TABLE_ENTRY
 xor rsi, rsi
 
 .loop:
@@ -273,7 +289,7 @@ mov rsi, rcx
 shl rsi, EXP_1_GIB
 or rsi, PS | READ_AND_WRITE | PAGE_PRESENT
 mov [rdi], rsi
-add rdi, BYTES_PER_PDPT_ENTRY
+add rdi, BYTES_PER_PAGE_TABLE_ENTRY
 inc rcx
 jmp .loop
 .done:
@@ -297,6 +313,8 @@ no_extended_features: db 'ERROR: No extended features available', NL, 0
 no_long_mode: db 'ERROR: No long mode support', NL, 0
 no_gigabyte_page: db 'ERROR: No gigabyte page support', NL, 0
 kernel_load_failed: db 'ERROR: Failed to load kernel', NL, 0
+user_a_load_failed: db 'ERROR: Failed to load user A', NL, 0
+user_b_load_failed: db 'ERROR: Failed to load user B', NL, 0
 
 
 ; For reading kernel into memory.
@@ -308,13 +326,23 @@ dw KERNEL_ORIGINAL_OFFSET, KERNEL_ORIGINAL_SEGMENT
 dq KERNEL_START_SECTOR
 
 
-; For reading user bin into memory.
-user_disk_address_packet:
+; For reading user A bin into memory.
+user_a_disk_address_packet:
 db DISK_PA_PACKET_SIZE
 db 0
-dw USER_SECTORS
-dw USER_ORIGINAL_OFFSET, USER_ORIGINAL_SEGMENT
-dq USER_START_SECTOR
+dw USER_A_SECTORS
+dw USER_A_OFFSET, USER_A_SEGMENT
+dq USER_A_START_SECTOR
+
+; For reading user B bin into memory.
+user_b_disk_address_packet:
+db DISK_PA_PACKET_SIZE
+db 0
+dw USER_B_SECTORS
+dw USER_B_OFFSET, USER_B_SEGMENT
+dq USER_B_START_SECTOR
+
+
 
 
 global_descriptor_table_PM:

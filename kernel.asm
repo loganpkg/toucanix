@@ -18,8 +18,6 @@
 
 %include "defs.inc"
 
-KERNEL_STACK_VA equ KERNEL_VA
-
 
 ; Programmable Interval Timer (PIT).
 RATE_GENERATOR equ 2 << 1
@@ -88,7 +86,7 @@ db 0, CODE_ACCESS_BYTE | DESCRIPTOR_PRIVILEGE_LEVEL_USER, \
 ; Data segment for user.
 dw 0, 0
 db 0, PRESENT_BIT_SET | DESCRIPTOR_PRIVILEGE_LEVEL_USER \
-    | TYPE_IS_CODE_OR_DATA_SEGMENT | CODE_READ_OR_DATA_WRITE_ACCESS, 0, 0
+    | CODE_OR_DATA_SEGMENT_TYPE | CODE_READ_OR_DATA_WRITE_ACCESS, 0, 0
 
 tss_entry: ; Double the usual GDT entry size.
 dw TSS_SIZE - 1 & 0xffff
@@ -117,7 +115,7 @@ dq global_descriptor_table
 tss:
 dd 0
 dq KERNEL_STACK_VA
-times TSS_SIZE - ($ - tss) - BYTES_PER_DOUBLE_WORD db 0
+times TSS_SIZE - ($ - tss) - DWORD_SIZE db 0
 dd TSS_SIZE
 
 
@@ -132,7 +130,11 @@ _start:
 mov rsp, KERNEL_STACK_VA
 
 ; Remove identity mapping.
-mov rax, PML4E_IDENTITY_VA
+; Clear the PML4E (note the E for Entry) that is being used for the identity
+; mapping. The PML4E that is used for the kernel space is still in force.
+; That is, the first 512GiB of physical memory is still mapped to the kernel
+; space.
+mov rax, PML4_VA
 mov qword [rax], 0
 
 

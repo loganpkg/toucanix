@@ -33,11 +33,13 @@ NO_ERROR_CODE equ 0
 section .text
 extern interrupt_handler
 
+global interrupt_return
 global load_idt
 global is_spurious_interrupt
 global acknowledge_interrupt
 global enter_process
 global get_cr2
+global switch_process
 
 
 %macro push_all 0
@@ -126,10 +128,15 @@ push SOFTWARE_INT
 jmp interrupt_common
 
 
+
+
 interrupt_common:
 push_all
 mov rdi, rsp ; Prepare argument 1: Address of the interrupt stack frame.
 call interrupt_handler
+
+
+
 
 interrupt_return:
 pop_all
@@ -138,10 +145,14 @@ add rsp, 16
 iretq
 
 
+
+
 load_idt:
 ; Argument 1: rdi: Address of (pointer to) the IDT Descriptor.
 lidt [rdi]
 ret
+
+
 
 
 is_spurious_interrupt:
@@ -160,11 +171,15 @@ mov rax, 0
 ret
 
 
+
+
 acknowledge_interrupt:
 ; No arguments.
 mov al, END_OF_INTERRUPT
 out PIC_MASTER_COMMAND, al
 ret
+
+
 
 
 enter_process:
@@ -173,7 +188,46 @@ mov rsp, rdi
 jmp interrupt_return
 
 
+
+
 get_cr2:
 ; No arguments.
 mov rax, cr2
+ret
+
+
+
+
+switch_process:
+; Argument 1: rdi: Pointer to rsp_save of process that is exiting execution.
+; Argument 2: rsi: rsp_save if of process entering execution.
+
+; When a process is entered for the first time the exiting code below
+; would have never been run. Hence, it is essential that the stack is prepared
+; for the entry code below. This is done when the process is setup in the
+; prepare_process function.
+
+; Exiting process:
+; Non-volatile registers (except for rsp).
+push rbx
+push rbp
+push r12
+push r13
+push r14
+push r15
+
+mov [rdi], rsp  ; Backup rsp to the exiting process.
+
+
+; Entering process:
+mov rsp, rsi    ; Restore rsp from the entering process.
+
+pop r15
+pop r14
+pop r13
+pop r12
+pop rbp
+pop rbx
+
+; Jumps to interrupt_return function.
 ret
