@@ -15,8 +15,8 @@
  */
 
 
-#ifndef printf_H
-#define printf_H
+#ifndef PRINTF_H
+#define PRINTF_H
 
 
 int printf(const char *format, ...);

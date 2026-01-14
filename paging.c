@@ -23,13 +23,6 @@
 #include "k_printf.h"
 
 
-#define PAGE_PRESENT    1
-#define READ_AND_WRITE  1 << 1
-#define USER_ACCESS     1 << 2
-/* Page Size attribute. */
-#define PS              1 << 7
-
-
 /* Virtual (linear) address components for paging. */
 #define pml4_component_va(v) ((v) >> 39 & 0x1ff)
 #define dir_ptr_component_va(v) ((v) >> 30 & 0x1ff)

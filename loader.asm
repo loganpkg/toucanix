@@ -84,15 +84,6 @@ PML4E_KERNEL_SPACE equ PML4_PA \
     * BYTES_PER_PAGE_TABLE_ENTRY
 
 
-PAGE_PRESENT    equ 1
-READ_AND_WRITE  equ 1 << 1
-USER_ACCESS     equ 1 << 2
-; Page Size attribute.
-PS              equ 1 << 7
-
-
-
-
 [BITS 16]
 [ORG LOADER_PA]
 
@@ -388,9 +379,9 @@ dq NULL_SEGMENT
 dw 0, 0
 db 0, CODE_ACCESS_BYTE, LONG_MODE_CODE << 4, 0
 
-GDT_SIZE equ $ - global_descriptor_table
+LOADER_GDT_SIZE equ $ - global_descriptor_table
 
 
 GDT_descriptor:
-dw GDT_SIZE - 1
+dw LOADER_GDT_SIZE - 1
 dd global_descriptor_table

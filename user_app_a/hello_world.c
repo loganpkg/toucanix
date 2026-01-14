@@ -16,15 +16,14 @@
 
 
 #include "../user_lib/printf.h"
+#include "../user_lib/u_system_call.h"
 
 
 int main(void)
 {
-    unsigned long i = 0;
-    while (1) {
-        if (!(i % 10000000))
-            printf("User app A\n");
+    uint64_t counter = 0;
 
-        ++i;
-    }
+    while (1)
+        if (!(++counter % 100000000))
+            (void) printf("User app A\n");
 }

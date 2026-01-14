@@ -15,12 +15,12 @@
  */
 
 
-#ifndef PROCESS_H
-#define PROCESS_H
+#ifndef U_SYSTEM_CALL_H
+#define U_SYSTEM_CALL_H
 
-int start_init_process(void);
-void schedule(void);
-void sleep(int wait_reason);
-void wake(int wait_reason);
+#include "stdint.h"
+
+int u_system_write(uint8_t fd, const void *buf, uint64_t s);
+int u_sleep(uint64_t seconds);
 
 #endif

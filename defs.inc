@@ -23,6 +23,7 @@
 ;+ #ifndef DEFS_H
 ;+ #define DEFS_H
 
+;+ extern int dummy;
 
 ; Disk image size.
 CYLINDERS equ 20
@@ -122,6 +123,13 @@ EXP_1_GIB equ 30
 PAGE_SIZE equ 1 << EXP_2_MIB
 
 
+PAGE_PRESENT    equ 1
+READ_AND_WRITE  equ 1 << 1
+USER_ACCESS     equ 1 << 2
+; Page Size attribute.
+PS              equ 1 << 7
+
+
 ; Newline character.
 NL equ 10
 
@@ -133,10 +141,15 @@ BIOS_DISK_SERVICES          equ 0x13
 
 
 
-
 PIC_MASTER_COMMAND equ 0x20
 
 
+
+SCREEN_WIDTH equ 80
+SCREEN_HEIGHT equ 25
+
+BYTES_PER_SCREEN_CHAR equ 2
+BYTES_PER_LINE equ SCREEN_WIDTH * BYTES_PER_SCREEN_CHAR
 
 
 ; Colours.
@@ -175,8 +188,13 @@ CODE_SELECTOR equ CODE_SEGMENT_INDEX << 3
 ; Must be <= INT_MAX.
 BUF_SIZE equ 1024
 
-U64_MAX_DIGITS equ 20
-U64_MAX_HEX equ 18
+
+; Unsigned integer limits.
+U64_MAX_DEC_DIGITS equ 20
+U64_MAX_HEX_DIGITS equ 18
+U64_MAX equ 0xFFFFFFFFFFFFFFFF
+U32_MAX equ         0xFFFFFFFF
+
 
 ; Standard file descriptors.
 STDIN_FILENO  equ 0
@@ -188,6 +206,26 @@ SOFTWARE_INT equ 0x80
 
 ; Software system call numbers.
 SYS_CALL_WRITE equ 0
+SYS_CALL_SLEEP equ 1
+
+
+; Timer.
+EVENTS_PER_SECOND equ 100
+
+
+; Wait reasons.
+TIMER_WAIT equ 0
+
+
+; GDT.
+USER_CODE_SEGMENT_INDEX equ 2
+USER_DATA_SEGMENT_INDEX equ 3
+
+USER_CODE_SELECTOR equ USER_CODE_SEGMENT_INDEX << 3 | USER_RING
+USER_DATA_SELECTOR equ USER_DATA_SEGMENT_INDEX << 3 | USER_RING
+
+
+TSS_SIZE equ 104
 
 
 ;+ #endif

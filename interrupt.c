@@ -25,14 +25,8 @@
 #include "system_call.h"
 
 
-
-#define CODE_SELECTOR (CODE_SEGMENT_INDEX << 3)
-
 #define IDT_NUM_ENTRIES 256
 #define INTERRUPT_GATE_TYPE 0xe
-
-#define PRESENT_BIT_SET (1 << 7)
-#define DESCRIPTOR_PRIVILEGE_LEVEL_USER (USER_RING << 5)
 
 #define CPL_MASK 3
 
@@ -60,8 +54,7 @@ struct idt_descriptor {
 } __attribute__((packed));
 
 static struct idt_descriptor idt_desc;
-
-
+uint64_t timer_counter = 0;
 
 
 /* Functions from the interrupt.asm file. */
@@ -95,8 +88,6 @@ void load_idt(struct idt_descriptor *idt_desc_p);
 int is_spurious_interrupt(void);
 void acknowledge_interrupt(void);
 uint64_t get_cr2(void);
-
-
 
 
 static void update_idt_with_isr(struct idt_entry *idt_e_p,
@@ -174,8 +165,13 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
         *((uint8_t *) v + 1) = BLUE;
 
         acknowledge_interrupt();
+        /*
+         * Interrupts are disabled in kernel mode, so if all processes are
+         * stuck in kernel mode (such as sleep), this will never increment.
+         */
+        ++timer_counter;
+        wake(TIMER_WAIT);
         schedule();
-
         break;
     case 39:
         v = (char *) VIDEO_VA + 2;

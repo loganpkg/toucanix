@@ -24,6 +24,8 @@ set -e
 set -u
 
 
+tmp=$(mktemp)
+
 . ./tools.sh
 
 
@@ -90,8 +92,8 @@ sed -E \
     -e 's~(.*[^ ])( *) equ( +)(.*)~#define \1\2\3\4~' \
     defs.inc \
     | sed -E \
+        -e 's~(\+ \()(NUM_GIB_MAPPED << EXP_1_GIB)~\\\n    \1(uint64_t) \2~' \
         -e 's~(#define +[^ ]+ +)(.*[^A-Za-z0-9_ ].*)~\1(\2)~' \
-        -e 's~(NUM_GIB_MAPPED << EXP_1_GIB)~(uint64_t) \1~' \
         > defs.h
 
 
@@ -106,7 +108,8 @@ sed -E \
     k_printf.c > user_lib/printf.c
 
 sed -E \
-    's~k_printf~printf~gI' \
+    -e 's~k_printf~printf~g' \
+    -e 's~K_PRINTF~PRINTF~g' \
     k_printf.h > user_lib/printf.h
 
 sed -E \
@@ -130,7 +133,29 @@ clean_up
 if grep -rEnI --exclude-dir=.git '.{80}'
 then
     printf '%s: ERROR: Long lines\n' "$0" 1>&2
-    # exit 1
+    exit 1
+fi
+
+
+# Check for duplicated definitions.
+find . -type f ! -path '*.git/*' ! -name 'defs.h' ! -name 'assert.h' \
+    \( -name '*.inc' -o -name '*.asm' -o -name '*.c' -o -name '*.h' \) \
+        -exec grep -E '#define | equ ' '{}' \; \
+            | sed -E 's/#define //' \
+            | tr '(' ' ' \
+            | sed -E 's/^ +//' \
+            | cut -d ' ' -f 1 \
+            | sort \
+            | uniq --count \
+            | grep -v -E ' 1 ' > "$tmp" || true
+
+
+if [ -s "$tmp" ]
+then
+    printf '%s: ERROR: Duplicated definitions' "$0" 1>&2
+    printf '%s\n' "$tmp" 1>&2
+    cat "$tmp" 1>&2
+    exit 1
 fi
 
 
@@ -152,8 +177,11 @@ asm_op -f elf64 -o kernel_a.o kernel.asm
 asm_op -f elf64 -o interrupt_a.o interrupt.asm
 asm_op -f elf64 -o asm_lib_a.o asm_lib.asm
 asm_op -f elf64 -o paging_a.o paging.asm
-asm_op -f elf64 -o user_lib/u_system_call_a.o user_lib/u_system_call.asm
-asm_op -f elf64 -o user_lib/_start_a.o user_lib/_start.asm
+
+cd user_lib || exit 1
+asm_op -f elf64 -o u_system_call_a.o u_system_call.asm
+asm_op -f elf64 -o _start_a.o _start.asm
+cd .. || exit 1
 
 find . -type f ! -path '*.git*' \( -name '*.c' -o -name '*.h' \) -exec sh -c '
     set -u
@@ -192,10 +220,10 @@ ld_op -T linker_script.ld -o kernel \
 
 
 ld_op -T user_lib/u_linker_script.ld -o user_app_a/user_a \
-    user_lib/user_lib.a user_lib/_start_a.o user_app_a/hello_world_c.o
+    user_app_a/hello_world_c.o user_lib/_start_a.o user_lib/user_lib.a
 
 ld_op -T user_lib/u_linker_script.ld -o user_app_b/user_b \
-    user_lib/user_lib.a user_lib/_start_a.o user_app_b/hello_world_c.o
+    user_app_b/hello_world_c.o user_lib/_start_a.o user_lib/user_lib.a
 
 
 objcopy_op -O binary kernel kernel.bin

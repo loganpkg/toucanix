@@ -22,11 +22,15 @@
 ;
 
 
-%include "defs.inc"
+%include "../defs.inc"
 
 
 section .text
 global u_system_write
+global u_sleep
+
+
+
 
 u_system_write:
 ; Stack frame.
@@ -45,6 +49,30 @@ mov rdi, 3
 mov rsi, rsp
 
 mov rax, SYS_CALL_WRITE
+int SOFTWARE_INT
+
+mov rsp, rbp
+pop rbp
+ret
+
+
+
+
+u_sleep:
+; Stack frame.
+push rbp
+mov rbp, rsp
+
+; Push original args to the stack, in reverse order.
+push rdi ; Arg 1: Seconds.
+
+; Send number of original args on the stack as the first new argument.
+mov rdi, 1
+
+; Send stack pointer as second new argument.
+mov rsi, rsp
+
+mov rax, SYS_CALL_SLEEP
 int SOFTWARE_INT
 
 mov rsp, rbp

@@ -26,9 +26,7 @@
 
 #include "screen.h"
 #include "defs.h"
-
-
-/*+ int u_system_write(uint8_t fd, const void *buf, uint64_t s); +*/
+/*+ #include "u_system_call.h" +*/
 
 
 static int print_str(char *buf, int *used, const char *str)
@@ -50,7 +48,7 @@ static int print_str(char *buf, int *used, const char *str)
 
 static int print_unsigned(char *buf, int *used, uint64_t x)
 {
-    char n[U64_MAX_DIGITS];
+    char n[U64_MAX_DEC_DIGITS];
     int ud, i = 0;
 
     do {
@@ -76,7 +74,7 @@ static int print_unsigned(char *buf, int *used, uint64_t x)
 static int print_hex(char *buf, int *used, uint64_t x)
 {
     char *hex_map = "0123456789abcdef";
-    char n[U64_MAX_HEX];
+    char n[U64_MAX_HEX_DIGITS];
     int ud, i = 0;
 
     do {

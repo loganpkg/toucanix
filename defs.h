@@ -23,6 +23,7 @@
 #ifndef DEFS_H
 #define DEFS_H
 
+extern int dummy;
 
 /* Disk image size. */
 #define CYLINDERS 20
@@ -59,7 +60,8 @@
 #define BYTES_PER_PAGE_TABLE_ENTRY 8
 #define NUM_GIB_MAPPED (PAGE_TABLE_SIZE / BYTES_PER_PAGE_TABLE_ENTRY)
 
-#define MAX_MAPPED_VA_EXCL (KERNEL_SPACE_VA + ((uint64_t) NUM_GIB_MAPPED << EXP_1_GIB))
+#define MAX_MAPPED_VA_EXCL (KERNEL_SPACE_VA \
+    + ((uint64_t) NUM_GIB_MAPPED << EXP_1_GIB))
 
 
 
@@ -122,6 +124,13 @@
 #define PAGE_SIZE (1 << EXP_2_MIB)
 
 
+#define PAGE_PRESENT    1
+#define READ_AND_WRITE  (1 << 1)
+#define USER_ACCESS     (1 << 2)
+/* Page Size attribute. */
+#define PS              (1 << 7)
+
+
 /* Newline character. */
 #define NL 10
 
@@ -133,10 +142,15 @@
 
 
 
-
 #define PIC_MASTER_COMMAND 0x20
 
 
+
+#define SCREEN_WIDTH 80
+#define SCREEN_HEIGHT 25
+
+#define BYTES_PER_SCREEN_CHAR 2
+#define BYTES_PER_LINE (SCREEN_WIDTH * BYTES_PER_SCREEN_CHAR)
 
 
 /* Colours. */
@@ -175,8 +189,13 @@
 /* Must be <= INT_MAX. */
 #define BUF_SIZE 1024
 
-#define U64_MAX_DIGITS 20
-#define U64_MAX_HEX 18
+
+/* Unsigned integer limits. */
+#define U64_MAX_DEC_DIGITS 20
+#define U64_MAX_HEX_DIGITS 18
+#define U64_MAX 0xFFFFFFFFFFFFFFFF
+#define U32_MAX         0xFFFFFFFF
+
 
 /* Standard file descriptors. */
 #define STDIN_FILENO  0
@@ -188,6 +207,26 @@
 
 /* Software system call numbers. */
 #define SYS_CALL_WRITE 0
+#define SYS_CALL_SLEEP 1
+
+
+/* Timer. */
+#define EVENTS_PER_SECOND 100
+
+
+/* Wait reasons. */
+#define TIMER_WAIT 0
+
+
+/* GDT. */
+#define USER_CODE_SEGMENT_INDEX 2
+#define USER_DATA_SEGMENT_INDEX 3
+
+#define USER_CODE_SELECTOR (USER_CODE_SEGMENT_INDEX << 3 | USER_RING)
+#define USER_DATA_SELECTOR (USER_DATA_SEGMENT_INDEX << 3 | USER_RING)
+
+
+#define TSS_SIZE 104
 
 
 #endif

@@ -20,6 +20,8 @@
 #ifndef ADDRESS_H
 #define ADDRESS_H
 
+extern int dummy;
+
 /*
  * Aligns up to the next page if not already aligned. The minus one is so
  * that an already aligned address will not move up to the next page.

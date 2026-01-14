@@ -23,12 +23,6 @@
 #include "screen.h"
 
 
-
-#define SCREEN_WIDTH 80
-#define SCREEN_HEIGHT 25
-#define BYTES_PER_SCREEN_CHAR 2
-#define BYTES_PER_LINE (SCREEN_WIDTH * BYTES_PER_SCREEN_CHAR)
-
 #define ROW_VA PRINT_VA
 #define COL_VA (PRINT_VA + 4)
 
