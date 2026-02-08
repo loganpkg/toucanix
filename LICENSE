@@ -1,6 +1,4 @@
-<!--
-
-Copyright (c) 2024, 2025 Logan Ryan McLintock. All rights reserved.
+Copyright (c) 2024-2026 Logan Ryan McLintock. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -22,45 +20,3 @@ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
-
--->
-
-Toucanix
-========
-
-Toucanix is a simple operating system, named after a Toucan
-(my favourite bird).
-
-```
-             _
-  ///////////o)
-  \\\\\\\\\\\  \
-            (   )//
-           (_ _ _)
-             K K
-```
-
-Abbreviations
--------------
-
-| Abbreviation | Expansion        |
-| :----------- | :--------------- |
-| pa           | Physical Address |
-| va           | Virtual Address  |
-| excl         | Exclusive        |
-| exec         | Executable       |
-| exp          | Exponent         |
-| PM           | Protected Mode   |
-
-
-Acknowledgements
-----------------
-
-Firstly, thanks be to the Father, the Son, and the Holy Spirit, for giving me
-the grace and strength to be the best that I can. All glory and honour is
-yours.
-
-Thank you to "x-BIT Development" for the course on Udemy called
-"Build your own 64-bit operating system - for the x86 architecture."
-I highly recommend this course for anyone doing OS dev. It guided me well on
-the journey.
