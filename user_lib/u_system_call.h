@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  */
 
-
 #ifndef U_SYSTEM_CALL_H
 #define U_SYSTEM_CALL_H
 

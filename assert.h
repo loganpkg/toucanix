@@ -23,9 +23,7 @@
  * SUCH DAMAGE.
  */
 
-
 #include "k_printf.h"
-
 
 #ifdef assert
 #undef assert
@@ -34,11 +32,12 @@
 #ifdef NDEBUG
 #define assert(expression) ((void) 0)
 #else
-#define assert(expression) do {                                             \
-        if (!(expression)) {                                                \
-            (void) k_printf("%s: %lu: Assertion failed: " #expression "\n", \
-                __FILE__, (unsigned long) __LINE__);                        \
-            while (1);                                                      \
-        }                                                                   \
+#define assert(expression)                                                    \
+    do {                                                                      \
+        if (!(expression)) {                                                  \
+            (void) k_printf("%s: %lu: Assertion failed: " #expression "\n",   \
+                __FILE__, (unsigned long) __LINE__);                          \
+            while (1);                                                        \
+        }                                                                     \
     } while (0)
 #endif

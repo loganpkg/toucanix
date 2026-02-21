@@ -23,20 +23,17 @@
  * SUCH DAMAGE.
  */
 
-
 /*
  * Print function. The user version is generated from the kernel version,
  * so do not directly edit the user version.
  */
 
-
 #include "stdarg.h"
 #include "stdint.h"
 
-
 #include "../defs.h"
-#include "u_system_call.h"
 
+#include "u_system_call.h"
 
 static int print_str(char *buf, int *used, const char *str)
 {
@@ -53,7 +50,6 @@ static int print_str(char *buf, int *used, const char *str)
     *used = ud;
     return 0;
 }
-
 
 static int print_unsigned(char *buf, int *used, uint64_t x)
 {
@@ -78,7 +74,6 @@ static int print_unsigned(char *buf, int *used, uint64_t x)
     *used = ud;
     return 0;
 }
-
 
 static int print_hex(char *buf, int *used, uint64_t x)
 {
@@ -109,7 +104,6 @@ static int print_hex(char *buf, int *used, uint64_t x)
     return 0;
 }
 
-
 int printf(const char *format, ...)
 {
     va_list a;
@@ -130,7 +124,7 @@ int printf(const char *format, ...)
             case 's':
                 str = va_arg(a, char *);
                 if (print_str(buf, &used, str) == -1)
-                    return -1;
+                    goto error;
 
                 break;
             case 'l':
@@ -138,33 +132,33 @@ int printf(const char *format, ...)
                 case 'u':
                     x = va_arg(a, uint64_t);
                     if (print_unsigned(buf, &used, x) == -1)
-                        return -1;
+                        goto error;
 
                     break;
                 case 'x':
                     x = va_arg(a, uint64_t);
 
                     if (print_hex(buf, &used, x) == -1)
-                        return -1;
+                        goto error;
 
                     break;
                 default:
-                    return -1;
+                    goto error;
                 }
                 break;
             case '%':
                 if (used == BUF_SIZE)
-                    return -1;  /* Error */
+                    goto error;
 
                 *(buf + used++) = '%';
                 break;
 
             default:
-                return -1;
+                goto error;
             }
         } else {
             if (used == BUF_SIZE)
-                return -1;      /* Error */
+                goto error;
 
             *(buf + used++) = ch;
         }
@@ -172,7 +166,9 @@ int printf(const char *format, ...)
 
     va_end(a);
 
-
-
     return u_system_write(STDOUT_FILENO, buf, (uint64_t) used);
+
+error:
+    va_end(a);
+    return -1;
 }

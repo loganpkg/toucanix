@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  */
 
-
 #ifndef INTERRUPT_H
 #define INTERRUPT_H
 
@@ -54,7 +53,6 @@ struct interrupt_stack_frame {
     uint64_t rsp;
     uint64_t ss;
 };
-
 
 void interrupt_return(void);
 void init_idt(void);

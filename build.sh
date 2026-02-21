@@ -25,8 +25,9 @@
 # SUCH DAMAGE.
 #
 
-
 # Build script for Toucanix.
+
+# shellcheck disable=SC2086
 
 set -x
 set -e
@@ -35,7 +36,75 @@ set -u
 
 tmp=$(mktemp)
 
-. ./tools.sh
+
+asm=nasm
+# asm=yasm
+
+cc=clang
+# cc=gcc
+
+ld=ld.lld
+# ld=ld
+
+
+# -DNDEBUG
+
+if [ "$cc" = clang ]
+then
+    encoding=UTF-8
+    cc_op='-MJ cc.json'
+else
+    encoding=ascii
+    cc_op=''
+fi
+
+
+cc_op="$cc_op \
+    -finput-charset=$encoding \
+    -ansi \
+    -O0 \
+    -Wall \
+    -Wextra \
+    -pedantic \
+    -ffreestanding \
+    -fno-stack-protector \
+    -fno-builtin \
+    -mcmodel=large \
+    -mno-red-zone \
+    -nostdlib \
+    -mno-sse \
+    -mno-avx"
+
+
+cc_c() {
+    obj_nm=$(printf %s "$1" | sed -E 's/\.c$/_c.o/')
+
+    if [ "$cc" = clang ]
+    then
+        printf '[\n' > compile_commands.json
+    fi
+
+    "$cc" -c $cc_op -o "$obj_nm" "$1"
+
+    if [ "$cc" = clang ]
+    then
+        cat cc.json >> compile_commands.json
+        printf ']\n' >> compile_commands.json
+        clang-tidy "$1"
+    fi
+}
+
+
+export cc cc_op
+
+ld_op="-z noexecstack \
+    --nostdlib"
+
+if [ "$ld" = ld ]
+then
+    ld_op="$ld_op \
+        --no-warn-rwx-segments"
+fi
 
 
 get_var() {
@@ -89,16 +158,14 @@ get_var USER_A_START_SECTOR
 get_var USER_B_START_SECTOR
 
 
-
-
 # Generate files.
 sed -E \
-    -e 's~;>~/*~g' \
-    -e 's~;<~ */~g' \
-    -e 's~;;~ *~g' \
-    -e 's~;\+ ~~g' \
-    -e 's~; (.+)~/* \1 */~' \
-    -e 's~(.*[^ ])( *) equ( +)(.*)~#define \1\2\3\4~' \
+    -e 's~^;>~/*~g' \
+    -e 's~^;<~ */~g' \
+    -e 's~^;;~ *~g' \
+    -e 's~^;\+ ~~g' \
+    -e 's~^; (.+)~/* \1 */~' \
+    -e 's~^(.*[^ ])( *) equ( +)(.*)~#define \1\2\3\4~' \
     defs.inc \
     | sed -E \
         -e 's~(\+ \()(NUM_GIB_MAPPED << EXP_1_GIB)~\\\n    \1(uint64_t) \2~' \
@@ -108,7 +175,7 @@ sed -E \
 
 sed -E \
     -e 's~k_printf~printf~g' \
-    -e 's~#include "screen\.h"~~' \
+    -e 's~^#include "screen\.h"~~' \
     -e 's~(defs\.h)~../\1~' \
     -e 's~/\*\+ ~~g' \
     -e 's~ \+ *\*/~~g' \
@@ -116,18 +183,18 @@ sed -E \
     -e 's~^.*write_to_screen.*$~~' \
     k_printf.c > user_lib/printf.c
 
+
 sed -E \
     -e 's~k_printf~printf~g' \
     -e 's~K_PRINTF~PRINTF~g' \
     k_printf.h > user_lib/printf.h
+
 
 sed -E \
     -e 's~^.*/\*-\*/$~~' \
     -e 's~/\*\+ ~~g' \
     -e 's~ \+\*/~~g' \
     linker_script.ld > user_lib/u_linker_script.ld
-
-
 
 
 # Fix permissions.
@@ -138,10 +205,14 @@ find . -type f ! -path '*.git*'   -name '*.sh' -exec chmod 700 '{}' \;
 
 clean_up
 
+err=$(mktemp)
+find . -type f ! -path '*.git/*' ! -name '*.json' \
+    -exec grep -IE '.{80}' '{}' \; > "$err" 2>&1
 
-if grep -rEnI --exclude-dir=.git '.{80}'
+if [ -s "$err" ]
 then
     printf '%s: ERROR: Long lines\n' "$0" 1>&2
+    cat "$err" 1>&2
     exit 1
 fi
 
@@ -168,76 +239,90 @@ then
 fi
 
 
-shellcheck build.sh tools.sh
+shellcheck build.sh
 
 
-cc -ansi -pedantic -Wall -Wextra show_defs.c
-./a.out | column -s ':' -t -R 2
+"$cc" -ansi -pedantic -Wall -Wextra show_defs.c
+./a.out | column -s ':' -t
 
 
 dd if=/dev/zero of=boot.img bs="$BYTES_PER_SECTOR" \
     count="$((CYLINDERS * HEADS * SECTORS))"
 
-asm_op -f bin -o mbr.bin mbr.asm
-asm_op -f bin -o print.bin print.asm
-asm_op -f bin -o loader.bin loader.asm
 
-asm_op -f elf64 -o kernel_a.o kernel.asm
-asm_op -f elf64 -o interrupt_a.o interrupt.asm
-asm_op -f elf64 -o asm_lib_a.o asm_lib.asm
-asm_op -f elf64 -o paging_a.o paging.asm
+"$asm" -f bin -o mbr.bin mbr.asm
+"$asm" -f bin -o print.bin print.asm
+"$asm" -f bin -o loader.bin loader.asm
+
+"$asm" -f elf64 -o kernel_a.o kernel.asm
+"$asm" -f elf64 -o interrupt_a.o interrupt.asm
+"$asm" -f elf64 -o asm_lib_a.o asm_lib.asm
+"$asm" -f elf64 -o paging_a.o paging.asm
 
 cd user_lib || exit 1
-asm_op -f elf64 -o u_system_call_a.o u_system_call.asm
-asm_op -f elf64 -o _start_a.o _start.asm
+"$asm" -f elf64 -o u_system_call_a.o u_system_call.asm
+"$asm" -f elf64 -o _start_a.o _start.asm
 cd .. || exit 1
 
-find . -type f ! -path '*.git*' \( -name '*.c' -o -name '*.h' \) -exec sh -c '
+
+find . -type f ! -path '*.git*' -name '*.h' -exec sh -c '
     set -u
-    . ./tools.sh
     fn="$1"
-    if ! cc_op -c "$fn"
+    if [ "$(uname)" = Linux ] || [ "$cc" != gcc ]
     then
-        exit 1
+        if ! "$cc" -c $cc_op "$fn"
+        then
+            exit 1
+        fi
     fi
-    indent_op "$fn"
-    lint_op "$fn"
+    clang-format -i --style=file "$fn"
 ' sh '{}' \;
 
 
-cc_op -c -o kernel_c.o kernel.c
-cc_op -c -o interrupt_c.o interrupt.c
-cc_op -c -o k_printf_c.o k_printf.c
-cc_op -c -o screen_c.o screen.c
-cc_op -c -o allocator_c.o allocator.c
-cc_op -c -o paging_c.o paging.c
-cc_op -c -o process_c.o process.c
-cc_op -c -o system_call_c.o system_call.c
-cc_op -c -o user_lib/printf_c.o user_lib/printf.c
-cc_op -c -o user_app_a/hello_world_c.o user_app_a/hello_world.c
-cc_op -c -o user_app_b/hello_world_c.o user_app_b/hello_world.c
+find . -type f ! -path '*.git*' -name '*.c' -exec sh -c '
+    set -u
+    fn="$1"
+    if ! "$cc" -c $cc_op "$fn"
+    then
+        exit 1
+    fi
+    clang-format -i --style=file "$fn"
+' sh '{}' \;
+
+
+cc_c kernel.c
+cc_c interrupt.c
+cc_c k_printf.c
+cc_c screen.c
+cc_c allocator.c
+cc_c paging.c
+cc_c process.c
+cc_c system_call.c
+cc_c user_lib/printf.c
+cc_c user_app_a/hello_world.c
+cc_c user_app_b/hello_world.c
 
 
 # Create user lib archive.
 ar rsc user_lib/user_lib.a user_lib/u_system_call_a.o user_lib/printf_c.o
 
 
-ld_op -T linker_script.ld -o kernel \
+"$ld" $ld_op -T linker_script.ld -o kernel \
     kernel_a.o kernel_c.o interrupt_a.o interrupt_c.o asm_lib_a.o \
     k_printf_c.o screen_c.o allocator_c.o paging_a.o paging_c.o process_c.o \
     system_call_c.o
 
 
-ld_op -T user_lib/u_linker_script.ld -o user_app_a/user_a \
+"$ld" $ld_op -T user_lib/u_linker_script.ld -o user_app_a/user_a \
     user_app_a/hello_world_c.o user_lib/_start_a.o user_lib/user_lib.a
 
-ld_op -T user_lib/u_linker_script.ld -o user_app_b/user_b \
+"$ld" $ld_op -T user_lib/u_linker_script.ld -o user_app_b/user_b \
     user_app_b/hello_world_c.o user_lib/_start_a.o user_lib/user_lib.a
 
 
-objcopy_op -O binary kernel kernel.bin
-objcopy_op -O binary user_app_a/user_a user_app_a/user_a.bin
-objcopy_op -O binary user_app_b/user_b user_app_b/user_b.bin
+objcopy -O binary kernel kernel.bin
+objcopy -O binary user_app_a/user_a user_app_a/user_a.bin
+objcopy -O binary user_app_b/user_b user_app_b/user_b.bin
 
 
 dd if=mbr.bin of=boot.img conv=notrunc
@@ -258,7 +343,7 @@ dd if=user_app_b/user_b.bin of=boot.img bs="$BYTES_PER_SECTOR" \
     seek="$USER_B_START_SECTOR" conv=notrunc
 
 
-qemu-system-x86_64 -cpu kvm64,pdpe1gb -m 1024 \
+qemu-system-x86_64 -display curses -cpu kvm64,pdpe1gb -m 1024 \
     -drive file=boot.img,index=0,media=disk,format=raw
 
 clean_up

@@ -23,10 +23,8 @@
  * SUCH DAMAGE.
  */
 
-
 #include "../user_lib/printf.h"
 #include "../user_lib/u_system_call.h"
-
 
 int main(void)
 {

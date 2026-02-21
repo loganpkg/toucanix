@@ -23,52 +23,48 @@
  * SUCH DAMAGE.
  */
 
-
-#include "defs.h"
 #include "address.h"
-#include "asm_lib.h"
-#include "interrupt.h"
 #include "allocator.h"
-#include "paging.h"
+#include "asm_lib.h"
+#include "defs.h"
+#include "interrupt.h"
 #include "k_printf.h"
-
+#include "paging.h"
 
 #define MAX_PROCESSES 1024
 
 #define KERNEL_PID 0
 
 /* Process states. */
-#define UNUSED_PROCESS 0
-#define READY_PROCESS 1
-#define RUNNING_PROCESS 2
+#define UNUSED_PROCESS   0
+#define READY_PROCESS    1
+#define RUNNING_PROCESS  2
 #define SLEEPING_PROCESS 3
 
-
 #define RFLAGS_INTERRUPT_ENABLE (1 << 9)
-#define RFLAGS_RESERVED_BIT_1 (1 << 1)
-
+#define RFLAGS_RESERVED_BIT_1   (1 << 1)
 
 struct process_control_block {
-    uint32_t pid;               /* Process Id. */
-    uint32_t ppid;              /* Parent process Id. */
-    uint32_t state;
     uint64_t pml4_pa;
     uint64_t kernel_stack_page_va;
     struct interrupt_stack_frame *isf_va;
     /* Used to save the rsp value before process switch. */
     uint64_t rsp_save;
-    int wait_reason;
-    int wait_next;              /* Index of the next sleeping process. */
-    int ready_next;             /* Index of the next ready process. */
-};
 
+    uint32_t pid;  /* Process Id. */
+    uint32_t ppid; /* Parent process Id. */
+    uint32_t state;
+
+    int wait_reason;
+    int wait_next;  /* Index of the next sleeping process. */
+    int ready_next; /* Index of the next ready process. */
+};
 
 struct task_state_segment {
     uint32_t reserved;
     uint64_t rsp0;
     unsigned char unused[TSS_SIZE - sizeof(uint32_t) - sizeof(uint64_t)];
 } __attribute__((packed));
-
 
 struct switch_stack_frame {
     uint64_t r15;
@@ -80,7 +76,6 @@ struct switch_stack_frame {
     uint64_t interrupt_return;
 };
 
-
 static struct process_control_block pcb[MAX_PROCESSES];
 
 static int current_index = -1;
@@ -88,9 +83,7 @@ static int ready_head_index = -1;
 static int ready_tail_index = -1;
 static int wait_head_index = -1;
 
-
 extern struct task_state_segment tss;
-
 
 static void print_pcb(void)
 {
@@ -117,7 +110,6 @@ static void print_pcb(void)
     else
         (void) k_printf("wait_head_index: %lu\n", wait_head_index);
 
-
     for (i = 0; i < MAX_PROCESSES; ++i) {
         if (pcb[i].state != UNUSED_PROCESS) {
             (void) k_printf("%s\n", "------------");
@@ -134,12 +126,15 @@ static void print_pcb(void)
             case SLEEPING_PROCESS:
                 state_str = "SLEEPING_PROCESS";
                 break;
+            default:
+                state_str = "UNKNOWN";
+                break;
             }
             (void) k_printf("state: %s\n", state_str);
 
             (void) k_printf("pml4_pa: %lx\n", pcb[i].pml4_pa);
-            (void) k_printf("kernel_stack_page_va: %lx\n",
-                            pcb[i].kernel_stack_page_va);
+            (void) k_printf(
+                "kernel_stack_page_va: %lx\n", pcb[i].kernel_stack_page_va);
 
             (void) k_printf("isf_va: %lx\n", pcb[i].isf_va);
             (void) k_printf("rsp_save: %lu\n", pcb[i].rsp_save);
@@ -162,7 +157,6 @@ static void print_pcb(void)
     }
 }
 
-
 static int prepare_process(uint64_t bin_pa, uint64_t bin_size)
 {
     int i;
@@ -173,45 +167,38 @@ static int prepare_process(uint64_t bin_pa, uint64_t bin_size)
             break;
 
     if (i == MAX_PROCESSES)
-        return -1;              /* Failure: No free process slots. */
-
+        return -1; /* Failure: No free process slots. */
 
     if (!(p = allocate_page_pa()))
         return -1;
 
     pcb[i].kernel_stack_page_va = pa_to_va(p);
 
-    if (!
-        (pcb[i].pml4_pa =
-         create_user_virtual_memory_space(pa_to_va(bin_pa), bin_size))) {
+    if (!(pcb[i].pml4_pa
+            = create_user_virtual_memory_space(pa_to_va(bin_pa), bin_size))) {
         free_page_pa(p);
         return -1;
     }
 
-    pcb[i].isf_va =
-        (struct interrupt_stack_frame *) (pcb[i].kernel_stack_page_va +
-                                          PAGE_SIZE -
-                                          sizeof(struct
-                                                 interrupt_stack_frame));
-
+    pcb[i].isf_va
+        = (struct interrupt_stack_frame *) (pcb[i].kernel_stack_page_va
+            + PAGE_SIZE - sizeof(struct interrupt_stack_frame));
 
     /*
      * Prepare the stack for first time entry in the
      * switch_process function.
      */
-    pcb[i].rsp_save =
-        (uint64_t) pcb[i].isf_va - sizeof(struct switch_stack_frame);
-    ((struct switch_stack_frame *) pcb[i].rsp_save)->interrupt_return =
-        (uint64_t) interrupt_return;
-
+    pcb[i].rsp_save
+        = (uint64_t) pcb[i].isf_va - sizeof(struct switch_stack_frame);
+    ((struct switch_stack_frame *) pcb[i].rsp_save)->interrupt_return
+        = (uint64_t) interrupt_return;
 
     pcb[i].isf_va->rip = USER_EXEC_START_VA;
     pcb[i].isf_va->cs = (uint64_t) USER_CODE_SELECTOR;
-    pcb[i].isf_va->rflags =
-        (uint64_t) (RFLAGS_INTERRUPT_ENABLE | RFLAGS_RESERVED_BIT_1);
+    pcb[i].isf_va->rflags
+        = (uint64_t) (RFLAGS_INTERRUPT_ENABLE | RFLAGS_RESERVED_BIT_1);
     pcb[i].isf_va->rsp = (uint64_t) USER_STACK_VA;
     pcb[i].isf_va->ss = (uint64_t) USER_DATA_SELECTOR;
-
 
     /* Set pid. pids loop within the same array index. */
     if (!pcb[i].pid || pcb[i].pid > U32_MAX - MAX_PROCESSES)
@@ -244,7 +231,6 @@ static int prepare_process(uint64_t bin_pa, uint64_t bin_size)
     return 0;
 }
 
-
 int start_init_process(void)
 {
     /* Start the first process. */
@@ -255,13 +241,11 @@ int start_init_process(void)
     /* Clear process array. */
     memset(pcb, 0, sizeof(struct process_control_block) * MAX_PROCESSES);
 
-
     if (prepare_process(USER_A_PA, USER_A_SIZE))
         return -1;
 
     if (prepare_process(USER_B_PA, USER_B_SIZE))
         return -1;
-
 
     /* Must be at least one process to start. */
     if (ready_head_index == -1)
@@ -271,7 +255,7 @@ int start_init_process(void)
     ready_head_index = pcb[ready_head_index].ready_next;
 
     if (ready_head_index == -1)
-        ready_tail_index = -1;  /* Update tail if list is now empty. */
+        ready_tail_index = -1; /* Update tail if list is now empty. */
 
     pcb[current_index].state = RUNNING_PROCESS;
 
@@ -283,7 +267,6 @@ int start_init_process(void)
     enter_process(pcb[current_index].isf_va);
     return 0;
 }
-
 
 void schedule(void)
 {
@@ -309,10 +292,9 @@ void schedule(void)
     tss.rsp0 = pcb[current_index].kernel_stack_page_va + PAGE_SIZE;
     switch_pml4_pa(pcb[current_index].pml4_pa);
 
-    switch_process(&pcb[ready_tail_index].rsp_save,
-                   pcb[current_index].rsp_save);
+    switch_process(
+        &pcb[ready_tail_index].rsp_save, pcb[current_index].rsp_save);
 }
-
 
 void sleep(int wait_reason)
 {
@@ -324,7 +306,6 @@ void sleep(int wait_reason)
 
     schedule();
 }
-
 
 void wake(int wait_reason)
 {
@@ -347,7 +328,6 @@ void wake(int wait_reason)
             if (i_prev != -1)
                 pcb[i_prev].wait_next = pcb[i].wait_next;
 
-
             /* Add process to head of the ready list. */
             pcb[i].wait_reason = 0;
             pcb[i].state = READY_PROCESS;
@@ -362,7 +342,7 @@ void wake(int wait_reason)
 
             j = i;
             i = pcb[i].wait_next;
-            pcb[j].wait_next = -1;      /* Close off old link. */
+            pcb[j].wait_next = -1; /* Close off old link. */
         } else {
             i = pcb[i].wait_next;
         }

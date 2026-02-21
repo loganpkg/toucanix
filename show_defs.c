@@ -23,13 +23,11 @@
  * SUCH DAMAGE.
  */
 
-#include <stdio.h>
 #include "defs.h"
+#include <stdio.h>
 
-
-#define print_macro(m) printf("%s: %#lx\n", #m, (unsigned long) m)
+#define print_macro(m)     printf("%s: %#lx\n", #m, (unsigned long) m)
 #define print_macro_dec(m) printf("%s: %d\n", #m, m)
-
 
 int main(void)
 {
@@ -40,7 +38,6 @@ int main(void)
     print_macro_dec(KERNEL_SECTORS);
     print_macro_dec(USER_A_SECTORS);
     print_macro_dec(USER_B_SECTORS);
-
 
     printf("Disk starting sectors:\n");
     print_macro_dec(PRINT_START_SECTOR);
@@ -69,7 +66,6 @@ int main(void)
     print_macro(VIDEO_PA);
     print_macro(KERNEL_PA);
 
-
     printf("Virtual memory addresses:\n");
     print_macro(USER_EXEC_START_VA);
     print_macro(NON_CANONICAL_MIN_VA);
@@ -80,7 +76,6 @@ int main(void)
     print_macro(VIDEO_VA);
     print_macro(KERNEL_VA);
     print_macro(KERNEL_STACK_VA);
-
 
     return 0;
 }

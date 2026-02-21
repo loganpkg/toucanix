@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2026 Logan Ryan McLintock. All rights reserved.
+ * Copyright (c) 2025 Logan Ryan McLintock. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,12 +23,9 @@
  * SUCH DAMAGE.
  */
 
-
 #ifndef PRINTF_H
 #define PRINTF_H
 
-
 int printf(const char *format, ...);
-
 
 #endif

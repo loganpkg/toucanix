@@ -23,12 +23,9 @@
  * SUCH DAMAGE.
  */
 
-
 #ifndef K_PRINTF_H
 #define K_PRINTF_H
 
-
 int k_printf(const char *format, ...);
-
 
 #endif

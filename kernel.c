@@ -23,15 +23,14 @@
  * SUCH DAMAGE.
  */
 
-
-#include "defs.h"
 #include "address.h"
-#include "assert.h"
-#include "asm_lib.h"
-#include "interrupt.h"
 #include "allocator.h"
-#include "paging.h"
+#include "asm_lib.h"
+#include "assert.h"
+#include "defs.h"
+#include "interrupt.h"
 #include "k_printf.h"
+#include "paging.h"
 #include "process.h"
 #include "screen.h"
 

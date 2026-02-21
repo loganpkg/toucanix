@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  */
 
-
 #ifndef ALLOCATOR_H
 #define ALLOCATOR_H
 
@@ -35,6 +34,5 @@ uint64_t allocate_page_pa(void);
 int init_free_physical_memory(void);
 int report_physical_memory(void);
 int check_physical_memory(void);
-
 
 #endif

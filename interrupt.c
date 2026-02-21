@@ -23,31 +23,29 @@
  * SUCH DAMAGE.
  */
 
-
-#include "defs.h"
+#include "interrupt.h"
 #include "address.h"
 #include "asm_lib.h"
-#include "interrupt.h"
-#include "process.h"
+#include "defs.h"
 #include "k_printf.h"
+#include "process.h"
 #include "screen.h"
 #include "system_call.h"
 
-
-#define IDT_NUM_ENTRIES 256
+#define IDT_NUM_ENTRIES     256
 #define INTERRUPT_GATE_TYPE 0xe
 
 #define CPL_MASK 3
 
 /* The Argument vn stands for Vector Number. */
-#define set_isr(vn) update_idt_with_isr(idt + vn, (uint64_t) vector_ ## vn, \
-    (uint8_t) (PRESENT_BIT_SET | INTERRUPT_GATE_TYPE))
-
+#define set_isr(vn)                                                           \
+    update_idt_with_isr(idt + vn, (uint64_t) vector_##vn,                     \
+        (uint8_t) (PRESENT_BIT_SET | INTERRUPT_GATE_TYPE))
 
 struct idt_entry {
     uint16_t offset_0_to_15;
     uint16_t segment_selector;
-    uint8_t reserved_and_ist;   /* Interrupt Stack Table (IST). */
+    uint8_t reserved_and_ist; /* Interrupt Stack Table (IST). */
     uint8_t present_dpl_gate_type;
     uint16_t offset_16_to_31;
     uint32_t offset_32_to_63;
@@ -56,7 +54,6 @@ struct idt_entry {
 
 static struct idt_entry idt[IDT_NUM_ENTRIES];
 
-
 struct idt_descriptor {
     uint16_t idt_size_minus_1;
     uint64_t address_of_idt;
@@ -64,7 +61,6 @@ struct idt_descriptor {
 
 static struct idt_descriptor idt_desc;
 uint64_t timer_counter = 0;
-
 
 /* Functions from the interrupt.asm file. */
 extern void vector_0(void);
@@ -98,10 +94,8 @@ int is_spurious_interrupt(void);
 void acknowledge_interrupt(void);
 uint64_t get_cr2(void);
 
-
 static void update_idt_with_isr(struct idt_entry *idt_e_p,
-                                uint64_t address_of_isr,
-                                uint8_t present_dpl_gate_type)
+    uint64_t address_of_isr, uint8_t present_dpl_gate_type)
 {
     /*
      * IDT = Interrupt Descriptor Table.
@@ -117,7 +111,6 @@ static void update_idt_with_isr(struct idt_entry *idt_e_p,
     idt_e_p->present_dpl_gate_type = present_dpl_gate_type;
     idt_e_p->reserved = 0;
 }
-
 
 void init_idt(void)
 {
@@ -146,17 +139,15 @@ void init_idt(void)
     set_isr(39);
 
     update_idt_with_isr(idt + SOFTWARE_INT,
-                        (uint64_t) system_software_interrupt,
-                        (uint8_t) (PRESENT_BIT_SET |
-                                   DESCRIPTOR_PRIVILEGE_LEVEL_USER |
-                                   INTERRUPT_GATE_TYPE));
+        (uint64_t) system_software_interrupt,
+        (uint8_t) (PRESENT_BIT_SET | DESCRIPTOR_PRIVILEGE_LEVEL_USER
+            | INTERRUPT_GATE_TYPE));
 
-    idt_desc.idt_size_minus_1 =
-        (IDT_NUM_ENTRIES * sizeof(struct idt_entry)) - 1;
+    idt_desc.idt_size_minus_1
+        = (IDT_NUM_ENTRIES * sizeof(struct idt_entry)) - 1;
     idt_desc.address_of_idt = (uint64_t) idt;
     load_idt(&idt_desc);
 }
-
 
 void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
 {
@@ -259,17 +250,15 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
 
         *((uint8_t *) v + 1) = RED;
 
-
         (void) k_printf("Interrupt Handler:\n");
-        (void) k_printf("    Vector Number: %lu\n",
-                        (unsigned long) isf_va->vector_number);
-        (void) k_printf("    Error Code: %lu\n",
-                        (unsigned long) isf_va->error_code);
-        (void) k_printf("    Ring: %lu\n",
-                        (unsigned long) (isf_va->cs & CPL_MASK));
+        (void) k_printf(
+            "    Vector Number: %lu\n", (unsigned long) isf_va->vector_number);
+        (void) k_printf(
+            "    Error Code: %lu\n", (unsigned long) isf_va->error_code);
+        (void) k_printf(
+            "    Ring: %lu\n", (unsigned long) (isf_va->cs & CPL_MASK));
         (void) k_printf("    rip: %lx\n", (unsigned long) isf_va->rip);
         (void) k_printf("    cr2: %lx\n", (unsigned long) get_cr2());
-
 
         while (1);
     }

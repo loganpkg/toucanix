@@ -23,33 +23,28 @@
  * SUCH DAMAGE.
  */
 
-
 #include "stdint.h"
 
-#include "defs.h"
 #include "address.h"
 #include "asm_lib.h"
+#include "defs.h"
 #include "screen.h"
-
 
 #define ROW_VA PRINT_VA
 #define COL_VA (PRINT_VA + 4)
 
-#define text_ptr(r, c) ((char *) VIDEO_VA + (r) * BYTES_PER_LINE \
-    + (c) * BYTES_PER_SCREEN_CHAR)
+#define text_ptr(r, c)                                                        \
+    ((char *) VIDEO_VA + (r) * BYTES_PER_LINE + (c) * BYTES_PER_SCREEN_CHAR)
 
 #define colour_ptr(r, c) ((uint8_t *) text_ptr((r), (c)) + 1)
 
-
 static uint64_t row = 0, col = 0;
-
 
 void init_screen(void)
 {
     row = *(uint32_t *) ROW_VA;
     col = *(uint32_t *) COL_VA;
 }
-
 
 void write_to_screen(char *buf, int s)
 {
@@ -65,12 +60,12 @@ void write_to_screen(char *buf, int s)
         if (row == SCREEN_HEIGHT) {
             /* Scroll up a line. */
             memmove((void *) VIDEO_VA,
-                    (const void *) (VIDEO_VA + BYTES_PER_LINE),
-                    (SCREEN_HEIGHT - 1) * BYTES_PER_LINE);
+                (const void *) (VIDEO_VA + BYTES_PER_LINE),
+                (SCREEN_HEIGHT - 1) * BYTES_PER_LINE);
             --row;
             /* Clear last row. */
             memset((void *) (VIDEO_VA + (SCREEN_HEIGHT - 1) * BYTES_PER_LINE),
-                   0, BYTES_PER_LINE);
+                0, BYTES_PER_LINE);
         }
         ch = *(buf + i);
 

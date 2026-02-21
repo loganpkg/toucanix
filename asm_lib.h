@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  */
 
-
 #ifndef ASM_LIB_H
 #define ASM_LIB_H
 
@@ -35,6 +34,5 @@ void *memmove(void *dest, const void *source, size_t s);
 void *memset(void *dest, int c, size_t s);
 
 int memcmp(const void *mem_a, const void *mem_b, size_t s);
-
 
 #endif
