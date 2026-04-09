@@ -124,7 +124,15 @@ get_var() {
 check_size() {
     fn="$1"                     # Binary file name.
     rs="$2"                     # Number of reserved sectors.
-    fs=$(stat -f '%z' "$1")     # Binary file size.
+
+    # Binary file size.
+    if [ "$(uname)" = Linux ]
+    then
+        fs=$(stat -c '%s' "$1")
+    else
+        fs=$(stat -f '%z' "$1")
+    fi
+
     max_s=$((rs * BYTES_PER_SECTOR))
     if [ "$fs" -gt "$max_s" ]
     then
