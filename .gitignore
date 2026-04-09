@@ -1,6 +1,8 @@
 kernel
-user_a
-user_b
+user_app_a/user_a
+user_app_b/user_b
+user_app_c/user_c
+test/test_ll
 a.out
 *.bin
 *.img

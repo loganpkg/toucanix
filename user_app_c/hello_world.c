@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Logan Ryan McLintock. All rights reserved.
+ * Copyright (c) 2025, 2026 Logan Ryan McLintock. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,21 +23,14 @@
  * SUCH DAMAGE.
  */
 
-#include "k_printf.h"
+#include "../user_lib/printf.h"
+#include "../user_lib/u_system_call.h"
 
-#ifdef assert
-#undef assert
-#endif
+int main(void)
+{
+    uint64_t counter = 0;
 
-#ifdef DEBUG
-#define assert(expression)                                                    \
-    do {                                                                      \
-        if (!(expression)) {                                                  \
-            (void) k_printf("%s: %lu: Assertion failed: " #expression "\n",   \
-                __FILE__, (unsigned long) __LINE__);                          \
-            while (1);                                                        \
-        }                                                                     \
-    } while (0)
-#else
-#define assert(expression) ((void) 0)
-#endif
+    while (1)
+        if (!(++counter % 100000000))
+            (void) printf("==> User app C\n");
+}

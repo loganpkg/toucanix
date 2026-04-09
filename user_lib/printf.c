@@ -37,24 +37,22 @@
 
 static int print_str(char *buf, int *used, const char *str)
 {
-    int ud = *used;
     char ch;
 
     while ((ch = *str++) != '\0') {
-        if (ud == BUF_SIZE)
+        if (*used == BUF_SIZE)
             return -1;
 
-        *(buf + ud++) = ch;
+        *(buf + (*used)++) = ch;
     }
 
-    *used = ud;
     return 0;
 }
 
 static int print_unsigned(char *buf, int *used, uint64_t x)
 {
     char n[U64_MAX_DEC_DIGITS];
-    int ud, i = 0;
+    int i = 0;
 
     do {
         *(n + i++) = (char) ('0' + x % 10);
@@ -62,24 +60,43 @@ static int print_unsigned(char *buf, int *used, uint64_t x)
     } while (x);
 
     /* Reverse. */
-    ud = *used;
     do {
         --i;
-        if (ud == BUF_SIZE)
+        if (*used == BUF_SIZE)
             return -1;
 
-        *(buf + ud++) = *(n + i);
+        *(buf + (*used)++) = *(n + i);
     } while (i);
 
-    *used = ud;
     return 0;
+}
+
+static int print_signed(char *buf, int *used, int64_t y)
+{
+    uint64_t x;
+
+    /* See if negative. */
+    if (y < 0) {
+        /* Print minus sign. */
+        if (*used == BUF_SIZE)
+            return -1; /* Buffer is full. */
+
+        *(buf + (*used)++) = '-';
+
+        /* Make positive. */
+        x = U64_MAX - (uint64_t) y + 1;
+    } else {
+        x = y;
+    }
+
+    return print_unsigned(buf, used, x);
 }
 
 static int print_hex(char *buf, int *used, uint64_t x)
 {
     char *hex_map = "0123456789abcdef";
     char n[U64_MAX_HEX_DIGITS];
-    int ud, i = 0;
+    int i = 0;
 
     do {
         *(n + i++) = *(hex_map + x % 16);
@@ -91,16 +108,14 @@ static int print_hex(char *buf, int *used, uint64_t x)
     *(n + i++) = '0';
 
     /* Reverse. */
-    ud = *used;
     do {
         --i;
-        if (ud == BUF_SIZE)
+        if (*used == BUF_SIZE)
             return -1;
 
-        *(buf + ud++) = *(n + i);
+        *(buf + (*used)++) = *(n + i);
     } while (i);
 
-    *used = ud;
     return 0;
 }
 
@@ -113,6 +128,7 @@ int printf(const char *format, ...)
     char ch;
     char *str;
     uint64_t x;
+    int64_t y;
 
     used = 0;
 
@@ -132,6 +148,12 @@ int printf(const char *format, ...)
                 case 'u':
                     x = va_arg(a, uint64_t);
                     if (print_unsigned(buf, &used, x) == -1)
+                        goto error;
+
+                    break;
+                case 'd':
+                    y = va_arg(a, int64_t);
+                    if (print_signed(buf, &used, y) == -1)
                         goto error;
 
                     break;

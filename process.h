@@ -27,8 +27,8 @@
 #define PROCESS_H
 
 int start_init_process(void);
-void schedule(void);
-void sleep(int wait_reason);
-void wake(int wait_reason);
+int give_up_execution(void);
+int sleep(int wait_reason);
+int wake(int wait_reason);
 
 #endif

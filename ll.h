@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Logan Ryan McLintock. All rights reserved.
+ * Copyright (c) 2026 Logan Ryan McLintock. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,21 +23,38 @@
  * SUCH DAMAGE.
  */
 
-#include "k_printf.h"
+/* [Doubly] Linked List using static memory. */
 
-#ifdef assert
-#undef assert
+#ifndef LL_H
+#define LL_H
+
+#ifdef TOUCANIX
+#include "defs.h"
+#else
+#include "test/test_defs.h"
 #endif
 
-#ifdef DEBUG
-#define assert(expression)                                                    \
-    do {                                                                      \
-        if (!(expression)) {                                                  \
-            (void) k_printf("%s: %lu: Assertion failed: " #expression "\n",   \
-                __FILE__, (unsigned long) __LINE__);                          \
-            while (1);                                                        \
-        }                                                                     \
-    } while (0)
-#else
-#define assert(expression) ((void) 0)
+struct ll_node {
+    int data;
+    int used;
+    int prev;
+    int next;
+};
+
+struct linked_list {
+    int used_count; /* Count of used nodes. */
+    int free;       /* Index of next free node. */
+    int head;
+    int tail;
+    struct ll_node list[MAX_NODES];
+};
+
+void dump_ll(struct linked_list *y);
+void init_ll(struct linked_list *y);
+int push_to_head_ll(struct linked_list *y, int data);
+int push_to_tail_ll(struct linked_list *y, int data);
+int pop_from_head_ll(struct linked_list *y, int *data);
+int pop_from_tail_ll(struct linked_list *y, int *data);
+int remove_node_ll(struct linked_list *y, int index);
+
 #endif

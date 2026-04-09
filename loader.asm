@@ -158,6 +158,16 @@ int BIOS_DISK_SERVICES
 jc error_g
 
 
+; Load user C bin.
+mov dl, DISK
+xor ax, ax
+mov ds, ax
+mov si, user_c_disk_address_packet
+mov ah, EXTENDED_READ_FUNCTION_CODE
+int BIOS_DISK_SERVICES
+jc error_h
+
+
 kernel_loaded:
 
 ; Prepare for Protected Mode.
@@ -194,7 +204,9 @@ error_f:
 error_g:
     mov si, user_b_load_failed
     jmp error
-
+error_h:
+    mov si, user_c_load_failed
+    jmp error
 
 error:
 xor ax, ax
@@ -315,6 +327,7 @@ no_gigabyte_page: db 'ERROR: No gigabyte page support', NL, 0
 kernel_load_failed: db 'ERROR: Failed to load kernel', NL, 0
 user_a_load_failed: db 'ERROR: Failed to load user A', NL, 0
 user_b_load_failed: db 'ERROR: Failed to load user B', NL, 0
+user_c_load_failed: db 'ERROR: Failed to load user C', NL, 0
 
 
 ; For reading kernel into memory.
@@ -341,6 +354,14 @@ db 0
 dw USER_B_SECTORS
 dw USER_B_OFFSET, USER_B_SEGMENT
 dq USER_B_START_SECTOR
+
+; For reading user C bin into memory.
+user_c_disk_address_packet:
+db DISK_PA_PACKET_SIZE
+db 0
+dw USER_C_SECTORS
+dw USER_C_OFFSET, USER_C_SEGMENT
+dq USER_C_START_SECTOR
 
 
 

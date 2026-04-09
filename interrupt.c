@@ -171,7 +171,7 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
          */
         ++timer_counter;
         wake(TIMER_WAIT);
-        schedule();
+        give_up_execution();
         break;
     case 39:
         v = (char *) VIDEO_VA + 2;

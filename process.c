@@ -29,9 +29,8 @@
 #include "defs.h"
 #include "interrupt.h"
 #include "k_printf.h"
+#include "ll.h"
 #include "paging.h"
-
-#define MAX_PROCESSES 1024
 
 #define KERNEL_PID 0
 
@@ -40,6 +39,7 @@
 #define READY_PROCESS    1
 #define RUNNING_PROCESS  2
 #define SLEEPING_PROCESS 3
+#define KILL_PROCESS     4
 
 #define RFLAGS_INTERRUPT_ENABLE (1 << 9)
 #define RFLAGS_RESERVED_BIT_1   (1 << 1)
@@ -56,8 +56,6 @@ struct process_control_block {
     uint32_t state;
 
     int wait_reason;
-    int wait_next;  /* Index of the next sleeping process. */
-    int ready_next; /* Index of the next ready process. */
 };
 
 struct task_state_segment {
@@ -78,10 +76,11 @@ struct switch_stack_frame {
 
 static struct process_control_block pcb[MAX_PROCESSES];
 
+static struct linked_list ready_list;
+static struct linked_list wait_list;
+static struct linked_list kill_list;
+
 static int current_index = -1;
-static int ready_head_index = -1;
-static int ready_tail_index = -1;
-static int wait_head_index = -1;
 
 extern struct task_state_segment tss;
 
@@ -90,25 +89,7 @@ static void print_pcb(void)
     char *state_str;
     size_t i;
 
-    if (current_index == -1)
-        (void) k_printf("current_index: %s\n", "-1");
-    else
-        (void) k_printf("current_index: %lu\n", current_index);
-
-    if (ready_head_index == -1)
-        (void) k_printf("ready_head_index: %s\n", "-1");
-    else
-        (void) k_printf("ready_head_index: %lu\n", ready_head_index);
-
-    if (ready_tail_index == -1)
-        (void) k_printf("ready_tail_index: %s\n", "-1");
-    else
-        (void) k_printf("ready_tail_index: %lu\n", ready_tail_index);
-
-    if (wait_head_index == -1)
-        (void) k_printf("wait_head_index: %s\n", "-1");
-    else
-        (void) k_printf("wait_head_index: %lu\n", wait_head_index);
+    (void) k_printf("current_index: %ld\n", current_index);
 
     for (i = 0; i < MAX_PROCESSES; ++i) {
         if (pcb[i].state != UNUSED_PROCESS) {
@@ -126,6 +107,9 @@ static void print_pcb(void)
             case SLEEPING_PROCESS:
                 state_str = "SLEEPING_PROCESS";
                 break;
+            case KILL_PROCESS:
+                state_str = "KILL_PROCESS";
+                break;
             default:
                 state_str = "UNKNOWN";
                 break;
@@ -139,20 +123,7 @@ static void print_pcb(void)
             (void) k_printf("isf_va: %lx\n", pcb[i].isf_va);
             (void) k_printf("rsp_save: %lu\n", pcb[i].rsp_save);
 
-            if (pcb[i].wait_reason == -1)
-                (void) k_printf("wait_reason: %s\n", "-1");
-            else
-                (void) k_printf("wait_reason: %lu\n", pcb[i].wait_reason);
-
-            if (pcb[i].wait_next == -1)
-                (void) k_printf("wait_next: %s\n", "-1");
-            else
-                (void) k_printf("wait_next: %lu\n", pcb[i].wait_next);
-
-            if (pcb[i].ready_next == -1)
-                (void) k_printf("ready_next: %s\n", "-1");
-            else
-                (void) k_printf("ready_next: %lu\n", pcb[i].ready_next);
+            (void) k_printf("wait_reason: %ld\n", pcb[i].wait_reason);
         }
     }
 }
@@ -212,19 +183,9 @@ static int prepare_process(uint64_t bin_pa, uint64_t bin_size)
     else
         pcb[i].ppid = pcb[current_index].pid;
 
-    /* Close off link. */
-    pcb[i].ready_next = -1;
     pcb[i].state = READY_PROCESS;
-
-    if (ready_head_index == -1) {
-        /* Empty list, so make it the new head (and tail). */
-        ready_head_index = i;
-        ready_tail_index = i;
-    } else {
-        /* Add on to ready tail. */
-        pcb[ready_tail_index].ready_next = i;
-        ready_tail_index = i;
-    }
+    if (push_to_tail_ll(&ready_list, i))
+        return -1;
 
     (void) print_pcb();
 
@@ -241,21 +202,25 @@ int start_init_process(void)
     /* Clear process array. */
     memset(pcb, 0, sizeof(struct process_control_block) * MAX_PROCESSES);
 
+    init_ll(&ready_list);
+    init_ll(&wait_list);
+    init_ll(&kill_list);
+
     if (prepare_process(USER_A_PA, USER_A_SIZE))
         return -1;
 
     if (prepare_process(USER_B_PA, USER_B_SIZE))
         return -1;
 
-    /* Must be at least one process to start. */
-    if (ready_head_index == -1)
+    if (prepare_process(USER_C_PA, USER_C_SIZE))
         return -1;
 
-    current_index = ready_head_index;
-    ready_head_index = pcb[ready_head_index].ready_next;
+    /* Must be at least one process to start. */
+    if (!ready_list.used_count)
+        return -1;
 
-    if (ready_head_index == -1)
-        ready_tail_index = -1; /* Update tail if list is now empty. */
+    if (pop_from_head_ll(&ready_list, &current_index))
+        return -1;
 
     pcb[current_index].state = RUNNING_PROCESS;
 
@@ -268,83 +233,81 @@ int start_init_process(void)
     return 0;
 }
 
-void schedule(void)
+static int schedule(void)
 {
+    int old_current_index;
+
     /* Do nothing if only the current process. */
-    if (ready_head_index == -1)
-        return;
+    if (!ready_list.used_count)
+        return 0; /* Not an error. */
 
-    /* Close off link. */
-    pcb[current_index].ready_next = -1;
+    old_current_index = current_index;
 
-    /* Place current process on the tail. */
-    pcb[current_index].state = READY_PROCESS;
+    if (pop_from_head_ll(&ready_list, &current_index))
+        return -1;
 
-    pcb[ready_tail_index].ready_next = current_index;
-    ready_tail_index = current_index;
-
-    /* Load the head to the current. */
-    current_index = ready_head_index;
-
-    ready_head_index = pcb[current_index].ready_next;
     pcb[current_index].state = RUNNING_PROCESS;
 
     tss.rsp0 = pcb[current_index].kernel_stack_page_va + PAGE_SIZE;
     switch_pml4_pa(pcb[current_index].pml4_pa);
 
     switch_process(
-        &pcb[ready_tail_index].rsp_save, pcb[current_index].rsp_save);
+        &pcb[old_current_index].rsp_save, pcb[current_index].rsp_save);
+
+    return 0;
 }
 
-void sleep(int wait_reason)
+int give_up_execution(void)
 {
+    if (push_to_tail_ll(&ready_list, current_index))
+        return -1;
+
+    pcb[current_index].state = READY_PROCESS;
+
+    if (schedule())
+        return -1;
+
+    return 0;
+}
+
+int sleep(int wait_reason)
+{
+    if (push_to_head_ll(&wait_list, current_index))
+        return -1;
+
     pcb[current_index].state = SLEEPING_PROCESS;
     pcb[current_index].wait_reason = wait_reason;
-    pcb[current_index].ready_next = -1;
-    pcb[current_index].wait_next = wait_head_index;
-    wait_head_index = current_index;
 
-    schedule();
+    if (schedule())
+        return -1;
+
+    return 0;
 }
 
-void wake(int wait_reason)
+int wake(int wait_reason)
 {
     /*
      * Wake up all processes that are asleep for a given reason.
-     * Insert then at the head of the ready list.
+     * Push them into the ready list.
      */
 
-    int i_prev, i, j;
+    int i, next;
+    struct linked_list *w = &wait_list;
 
-    i_prev = -1;
-    i = wait_head_index;
+    /* Walk the linked list. */
+    i = w->head;
     while (i != -1) {
-        if (pcb[i].wait_reason == wait_reason) {
-            /* Remove process from wait list. */
-            if (i == wait_head_index)
-                wait_head_index = pcb[i].wait_next;
+        next = w->list[i].next; /* Save as the node might get deleted. */
 
-            /* Bypass the removed process. Relink around it. */
-            if (i_prev != -1)
-                pcb[i_prev].wait_next = pcb[i].wait_next;
+        if (pcb[w->list[i].data].wait_reason == wait_reason) {
+            if (push_to_head_ll(&ready_list, w->list[i].data))
+                return -1;
 
-            /* Add process to head of the ready list. */
-            pcb[i].wait_reason = 0;
-            pcb[i].state = READY_PROCESS;
-            pcb[i].ready_next = ready_head_index;
-
-            ready_head_index = i;
-            if (ready_tail_index == -1)
-                ready_tail_index = i;
-
-            /* Record previous. */
-            i_prev = i;
-
-            j = i;
-            i = pcb[i].wait_next;
-            pcb[j].wait_next = -1; /* Close off old link. */
-        } else {
-            i = pcb[i].wait_next;
+            if (remove_node_ll(&wait_list, i))
+                return -1;
         }
+        i = next;
     }
+
+    return 0;
 }

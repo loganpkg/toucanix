@@ -46,16 +46,14 @@ cc=clang
 ld=ld.lld
 # ld=ld
 
-
-# -DNDEBUG
+cc_op='-DTOUCANIX -DDEBUG'
 
 if [ "$cc" = clang ]
 then
     encoding=UTF-8
-    cc_op='-MJ cc.json'
+    cc_op="$cc_op -MJ cc.json"
 else
     encoding=ascii
-    cc_op=''
 fi
 
 
@@ -100,12 +98,11 @@ export cc cc_op
 ld_op="-z noexecstack \
     --nostdlib"
 
-if [ "$ld" = ld ]
-then
-    ld_op="$ld_op \
-        --no-warn-rwx-segments"
-fi
-
+# if [ "$ld" = ld ]
+# then
+#     ld_op="$ld_op \
+#         --no-warn-rwx-segments"
+# fi
 
 get_var() {
     code=''
@@ -124,16 +121,32 @@ get_var() {
 }
 
 
+check_size() {
+    fn="$1"                     # Binary file name.
+    rs="$2"                     # Number of reserved sectors.
+    fs=$(stat -f '%z' "$1")     # Binary file size.
+    max_s=$((rs * BYTES_PER_SECTOR))
+    if [ "$fs" -gt "$max_s" ]
+    then
+        printf '%s: ERROR: Binary file (%s) size (%s) too large
+            for sector reservation in bytes (%s)\n' \
+            "$0" "$fn" "$fs" "$max_s" 1>&2
+
+        exit 1
+    fi
+}
+
+
 clean_up() {
-find . -type f ! -path '*.git*' \
-    \( -name 'kernel'           \
-    -o -name 'boot.img.lock'    \
-    -o -name 'a.out'            \
-    -o -name '*~'               \
-    -o -name '*.o'              \
-    -o -name '*.a'              \
-    -o -name '*.gch'            \
-    -o -name '*.pch'            \
+find . -type f ! -path '*.git/*' \
+    \( -name 'kernel'            \
+    -o -name 'boot.img.lock'     \
+    -o -name 'a.out'             \
+    -o -name '*~'                \
+    -o -name '*.o'               \
+    -o -name '*.a'               \
+    -o -name '*.gch'             \
+    -o -name '*.pch'             \
     \) -delete
 }
 
@@ -148,6 +161,7 @@ get_var LOADER_SECTORS
 get_var KERNEL_SECTORS
 get_var USER_A_SECTORS
 get_var USER_B_SECTORS
+get_var USER_C_SECTORS
 
 get_var BYTES_PER_SECTOR
 
@@ -156,6 +170,7 @@ get_var LOADER_START_SECTOR
 get_var KERNEL_START_SECTOR
 get_var USER_A_START_SECTOR
 get_var USER_B_START_SECTOR
+get_var USER_C_START_SECTOR
 
 
 # Generate files.
@@ -198,9 +213,9 @@ sed -E \
 
 
 # Fix permissions.
-find . -type d ! -path '*.git*'                -exec chmod 700 '{}' \;
-find . -type f ! -path '*.git*' ! -name '*.sh' -exec chmod 600 '{}' \;
-find . -type f ! -path '*.git*'   -name '*.sh' -exec chmod 700 '{}' \;
+find . -type d ! -path '*.git/*'                -exec chmod 700 '{}' \;
+find . -type f ! -path '*.git/*' ! -name '*.sh' -exec chmod 600 '{}' \;
+find . -type f ! -path '*.git/*'   -name '*.sh' -exec chmod 700 '{}' \;
 
 
 clean_up
@@ -218,7 +233,11 @@ fi
 
 
 # Check for duplicated definitions.
-find . -type f ! -path '*.git/*' ! -name 'defs.h' ! -name 'assert.h' \
+find . -type f \
+    ! -path '*.git/*' \
+    ! -name 'defs.h' \
+    ! -name 'assert.h' \
+    ! -path '*/test/test_defs.h' \
     \( -name '*.inc' -o -name '*.asm' -o -name '*.c' -o -name '*.h' \) \
         -exec grep -E '#define | equ ' '{}' \; \
             | sed -E 's/#define //' \
@@ -265,7 +284,7 @@ cd user_lib || exit 1
 cd .. || exit 1
 
 
-find . -type f ! -path '*.git*' -name '*.h' -exec sh -c '
+find . -type f ! -path '*.git/*' -name '*.h' -exec sh -c '
     set -u
     fn="$1"
     if [ "$(uname)" = Linux ] || [ "$cc" != gcc ]
@@ -279,7 +298,7 @@ find . -type f ! -path '*.git*' -name '*.h' -exec sh -c '
 ' sh '{}' \;
 
 
-find . -type f ! -path '*.git*' -name '*.c' -exec sh -c '
+find . -type f ! -path '*.git/*' -name '*.c' -exec sh -c '
     set -u
     fn="$1"
     if ! "$cc" -c $cc_op "$fn"
@@ -298,9 +317,11 @@ cc_c allocator.c
 cc_c paging.c
 cc_c process.c
 cc_c system_call.c
+cc_c ll.c
 cc_c user_lib/printf.c
 cc_c user_app_a/hello_world.c
 cc_c user_app_b/hello_world.c
+cc_c user_app_c/hello_world.c
 
 
 # Create user lib archive.
@@ -310,7 +331,7 @@ ar rsc user_lib/user_lib.a user_lib/u_system_call_a.o user_lib/printf_c.o
 "$ld" $ld_op -T linker_script.ld -o kernel \
     kernel_a.o kernel_c.o interrupt_a.o interrupt_c.o asm_lib_a.o \
     k_printf_c.o screen_c.o allocator_c.o paging_a.o paging_c.o process_c.o \
-    system_call_c.o
+    system_call_c.o ll.o
 
 
 "$ld" $ld_op -T user_lib/u_linker_script.ld -o user_app_a/user_a \
@@ -319,31 +340,51 @@ ar rsc user_lib/user_lib.a user_lib/u_system_call_a.o user_lib/printf_c.o
 "$ld" $ld_op -T user_lib/u_linker_script.ld -o user_app_b/user_b \
     user_app_b/hello_world_c.o user_lib/_start_a.o user_lib/user_lib.a
 
+"$ld" $ld_op -T user_lib/u_linker_script.ld -o user_app_c/user_c \
+    user_app_c/hello_world_c.o user_lib/_start_a.o user_lib/user_lib.a
+
 
 objcopy -O binary kernel kernel.bin
 objcopy -O binary user_app_a/user_a user_app_a/user_a.bin
 objcopy -O binary user_app_b/user_b user_app_b/user_b.bin
+objcopy -O binary user_app_c/user_c user_app_c/user_c.bin
 
 
+check_size mbr.bin "$MBR_SECTOR"
 dd if=mbr.bin of=boot.img conv=notrunc
 
+check_size print.bin "$PRINT_SECTORS"
 dd if=print.bin of=boot.img bs="$BYTES_PER_SECTOR" \
     seek="$PRINT_START_SECTOR" conv=notrunc
 
+check_size loader.bin "$LOADER_SECTORS"
 dd if=loader.bin of=boot.img bs="$BYTES_PER_SECTOR" \
     seek="$LOADER_START_SECTOR" conv=notrunc
 
+check_size kernel.bin "$KERNEL_SECTORS"
 dd if=kernel.bin of=boot.img bs="$BYTES_PER_SECTOR" \
     seek="$KERNEL_START_SECTOR" conv=notrunc
 
+check_size user_app_a/user_a.bin "$USER_A_SECTORS"
 dd if=user_app_a/user_a.bin of=boot.img bs="$BYTES_PER_SECTOR" \
     seek="$USER_A_START_SECTOR" conv=notrunc
 
+check_size user_app_b/user_b.bin "$USER_B_SECTORS"
 dd if=user_app_b/user_b.bin of=boot.img bs="$BYTES_PER_SECTOR" \
     seek="$USER_B_START_SECTOR" conv=notrunc
+
+check_size user_app_c/user_c.bin "$USER_C_SECTORS"
+dd if=user_app_c/user_c.bin of=boot.img bs="$BYTES_PER_SECTOR" \
+    seek="$USER_C_START_SECTOR" conv=notrunc
 
 
 qemu-system-x86_64 -display curses -cpu kvm64,pdpe1gb -m 1024 \
     -drive file=boot.img,index=0,media=disk,format=raw
+
+
+# Build test code.
+cc -c -DDEBUG -ansi -Wall -Wextra -pedantic ll.c
+cc -c -DDEBUG -ansi -Wall -Wextra -pedantic test/test_ll.c
+cc test_ll.o ll.o -o test/test_ll
 
 clean_up

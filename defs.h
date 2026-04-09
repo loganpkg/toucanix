@@ -46,6 +46,7 @@ extern int dummy;
 #define KERNEL_SECTORS 120
 #define USER_A_SECTORS 6
 #define USER_B_SECTORS 6
+#define USER_C_SECTORS 6
 
 #define BYTES_PER_SECTOR 512
 
@@ -55,10 +56,12 @@ extern int dummy;
 #define KERNEL_START_SECTOR (LOADER_START_SECTOR + LOADER_SECTORS)
 #define USER_A_START_SECTOR (KERNEL_START_SECTOR + KERNEL_SECTORS)
 #define USER_B_START_SECTOR (USER_A_START_SECTOR + USER_A_SECTORS)
+#define USER_C_START_SECTOR (USER_B_START_SECTOR + USER_B_SECTORS)
 
 #define KERNEL_SIZE (KERNEL_SECTORS * BYTES_PER_SECTOR)
 #define USER_A_SIZE (USER_A_SECTORS * BYTES_PER_SECTOR)
 #define USER_B_SIZE (USER_B_SECTORS * BYTES_PER_SECTOR)
+#define USER_C_SIZE (USER_C_SECTORS * BYTES_PER_SECTOR)
 
 #define DWORD_SIZE                 4
 #define PAGE_TABLE_SIZE            0x1000
@@ -80,6 +83,7 @@ extern int dummy;
 #define KERNEL_ORIGINAL_PA        0x10000
 #define USER_A_PA                 0x20000
 #define USER_B_PA                 0x30000
+#define USER_C_PA                 0x40000
 #define PML4_PA                   0x70000
 #define PDPT_PA                   (PML4_PA + PAGE_TABLE_SIZE)
 #define VIDEO_PA                  0xb8000
@@ -96,6 +100,9 @@ extern int dummy;
 
 #define USER_B_SEGMENT (USER_B_PA / 16)
 #define USER_B_OFFSET  (USER_B_PA % 16)
+
+#define USER_C_SEGMENT (USER_C_PA / 16)
+#define USER_C_OFFSET  (USER_C_PA % 16)
 
 /* Virtual addresses. */
 #define USER_EXEC_START_VA   0x400000
@@ -205,5 +212,11 @@ extern int dummy;
 #define USER_DATA_SELECTOR (USER_DATA_SEGMENT_INDEX << 3 | USER_RING)
 
 #define TSS_SIZE 104
+
+/* Processes. */
+#define MAX_PROCESSES 1024
+
+/* [Doubly] Linked List. */
+#define MAX_NODES MAX_PROCESSES
 
 #endif

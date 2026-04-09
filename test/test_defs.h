@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Logan Ryan McLintock. All rights reserved.
+ * Copyright (c) 2026 Logan Ryan McLintock. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,21 +23,16 @@
  * SUCH DAMAGE.
  */
 
-#include "k_printf.h"
+#ifndef TEST_DEFS_H
+#define TEST_DEFS_H
 
-#ifdef assert
-#undef assert
+extern int dummy;
+
+/* [Doubly] Linked List. */
+#ifdef DEBUG
+#define MAX_NODES 4
+#else
+#define MAX_NODES 512
 #endif
 
-#ifdef DEBUG
-#define assert(expression)                                                    \
-    do {                                                                      \
-        if (!(expression)) {                                                  \
-            (void) k_printf("%s: %lu: Assertion failed: " #expression "\n",   \
-                __FILE__, (unsigned long) __LINE__);                          \
-            while (1);                                                        \
-        }                                                                     \
-    } while (0)
-#else
-#define assert(expression) ((void) 0)
 #endif
