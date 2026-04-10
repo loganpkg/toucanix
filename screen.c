@@ -34,7 +34,8 @@
 #define COL_VA (PRINT_VA + 4)
 
 #define text_ptr(r, c)                                                        \
-    ((char *) VIDEO_VA + (r) * BYTES_PER_LINE + (c) * BYTES_PER_SCREEN_CHAR)
+    ((unsigned char *) VIDEO_VA + (r) * BYTES_PER_LINE                        \
+        + (c) * BYTES_PER_SCREEN_CHAR)
 
 #define colour_ptr(r, c) ((uint8_t *) text_ptr((r), (c)) + 1)
 
@@ -46,36 +47,88 @@ void init_screen(void)
     col = *(uint32_t *) COL_VA;
 }
 
+void wrap_screen(void)
+{
+    /* Wrap if off the screen. */
+    if (col == SCREEN_WIDTH) {
+        /* Wrap line. */
+        ++row;
+        col = 0;
+    }
+    if (row == SCREEN_HEIGHT) {
+        /* Scroll up a line. */
+        memmove((void *) VIDEO_VA, (const void *) (VIDEO_VA + BYTES_PER_LINE),
+            (SCREEN_HEIGHT - 1) * BYTES_PER_LINE);
+        --row;
+        /* Clear last row. */
+        memset((void *) (VIDEO_VA + (SCREEN_HEIGHT - 1) * BYTES_PER_LINE), 0,
+            BYTES_PER_LINE);
+    }
+}
+
+void put_char_to_screen(char ch)
+{
+    char *hex_map = "0123456789ABCDEF";
+    unsigned char u;
+    int i;
+
+    u = (unsigned char) ch;
+
+    if (u == '\n') {
+        ++row;
+        col = 0;
+        wrap_screen();
+    } else if (u == '\t') {
+        for (i = 0; i < TAB_SIZE; ++i) {
+            *text_ptr(row, col) = ' ';
+            *colour_ptr(row, col) = DEFAULT_COLOUR;
+            ++col;
+            wrap_screen();
+        }
+    } else if (u <= 0x1F || u == 0x7F) {
+        /* Control character. Print in caret notation. */
+        *text_ptr(row, col) = '^';
+        *colour_ptr(row, col) = RED;
+        ++col;
+        wrap_screen();
+
+        *text_ptr(row, col) = u ^ 1 << 6; /* Toggle bit 6. */
+        *colour_ptr(row, col) = RED;
+        ++col;
+        wrap_screen();
+    } else if (u >= 0x20 && u <= 0x7E) {
+        /* Printable character (including space). */
+        *text_ptr(row, col) = u;
+        *colour_ptr(row, col) = DEFAULT_COLOUR;
+        ++col;
+        wrap_screen();
+    } else {
+        /* Print as hex. */
+        *text_ptr(row, col) = '\\';
+        *colour_ptr(row, col) = RED;
+        ++col;
+        wrap_screen();
+
+        *text_ptr(row, col) = 'x';
+        *colour_ptr(row, col) = RED;
+        ++col;
+        wrap_screen();
+
+        *text_ptr(row, col) = hex_map[u / 16];
+        *colour_ptr(row, col) = RED;
+        ++col;
+        wrap_screen();
+
+        *text_ptr(row, col) = hex_map[u % 16];
+        *colour_ptr(row, col) = RED;
+        ++col;
+        wrap_screen();
+    }
+}
+
 void write_to_screen(char *buf, int s)
 {
     int i;
-    char ch;
 
-    for (i = 0; i < s; ++i) {
-        if (col == SCREEN_WIDTH) {
-            /* Wrap line. */
-            ++row;
-            col = 0;
-        }
-        if (row == SCREEN_HEIGHT) {
-            /* Scroll up a line. */
-            memmove((void *) VIDEO_VA,
-                (const void *) (VIDEO_VA + BYTES_PER_LINE),
-                (SCREEN_HEIGHT - 1) * BYTES_PER_LINE);
-            --row;
-            /* Clear last row. */
-            memset((void *) (VIDEO_VA + (SCREEN_HEIGHT - 1) * BYTES_PER_LINE),
-                0, BYTES_PER_LINE);
-        }
-        ch = *(buf + i);
-
-        if (ch == '\n') {
-            ++row;
-            col = 0;
-        } else {
-            *text_ptr(row, col) = ch;
-            *colour_ptr(row, col) = DEFAULT_COLOUR;
-            ++col;
-        }
-    }
+    for (i = 0; i < s; ++i) put_char_to_screen(*(buf + i));
 }

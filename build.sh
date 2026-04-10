@@ -244,7 +244,6 @@ fi
 find . -type f \
     ! -path '*.git/*' \
     ! -name 'defs.h' \
-    ! -name 'assert.h' \
     ! -path '*/test/test_defs.h' \
     \( -name '*.inc' -o -name '*.asm' -o -name '*.c' -o -name '*.h' \) \
         -exec grep -E '#define | equ ' '{}' \; \
@@ -327,7 +326,7 @@ cc_c process.c
 cc_c system_call.c
 cc_c ll.c
 cc_c user_lib/printf.c
-cc_c user_app_a/hello_world.c
+cc_c user_app_a/init.c
 cc_c user_app_b/hello_world.c
 cc_c user_app_c/hello_world.c
 
@@ -343,7 +342,7 @@ ar rsc user_lib/user_lib.a user_lib/u_system_call_a.o user_lib/printf_c.o
 
 
 "$ld" $ld_op -T user_lib/u_linker_script.ld -o user_app_a/user_a \
-    user_app_a/hello_world_c.o user_lib/_start_a.o user_lib/user_lib.a
+    user_app_a/init_c.o user_lib/_start_a.o user_lib/user_lib.a
 
 "$ld" $ld_op -T user_lib/u_linker_script.ld -o user_app_b/user_b \
     user_app_b/hello_world_c.o user_lib/_start_a.o user_lib/user_lib.a

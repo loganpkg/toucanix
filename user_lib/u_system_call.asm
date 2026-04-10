@@ -37,6 +37,8 @@
 section .text
 global u_system_write
 global u_sleep
+global u_exit
+global u_clean_up
 
 
 
@@ -82,6 +84,44 @@ mov rdi, 1
 mov rsi, rsp
 
 mov rax, SYS_CALL_SLEEP
+int SOFTWARE_INT
+
+mov rsp, rbp
+pop rbp
+ret
+
+
+
+
+u_exit:
+; Stack frame.
+push rbp
+mov rbp, rsp
+
+; No args to be pushed to the stack.
+; Send number of original args on the stack as the first new argument.
+mov rdi, 0
+
+mov rax, SYS_CALL_EXIT
+int SOFTWARE_INT
+
+mov rsp, rbp
+pop rbp
+ret
+
+
+
+
+u_clean_up:
+; Stack frame.
+push rbp
+mov rbp, rsp
+
+; No args to be pushed to the stack.
+; Send number of original args on the stack as the first new argument.
+mov rdi, 0
+
+mov rax, SYS_CALL_CLEAN_UP
 int SOFTWARE_INT
 
 mov rsp, rbp

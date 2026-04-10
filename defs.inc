@@ -167,6 +167,7 @@ SCREEN_HEIGHT equ 25
 BYTES_PER_SCREEN_CHAR equ 2
 BYTES_PER_LINE equ SCREEN_WIDTH * BYTES_PER_SCREEN_CHAR
 
+TAB_SIZE equ 4
 
 ; Colours.
 BLUE    equ   1
@@ -223,14 +224,17 @@ SOFTWARE_INT equ 0x80
 ; Software system call numbers.
 SYS_CALL_WRITE equ 0
 SYS_CALL_SLEEP equ 1
+SYS_CALL_EXIT equ 2
+SYS_CALL_CLEAN_UP equ 3
 
 
 ; Timer.
 EVENTS_PER_SECOND equ 100
 
 
-; Wait reasons.
-TIMER_WAIT equ 0
+; Sleep reasons.
+TIMER_SLEEP equ 0
+INIT_PROCESS_SLEEP equ 1
 
 
 ; GDT.

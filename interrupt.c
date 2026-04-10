@@ -170,7 +170,7 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
          * stuck in kernel mode (such as sleep), this will never increment.
          */
         ++timer_counter;
-        wake(TIMER_WAIT);
+        wake_up(TIMER_SLEEP);
         give_up_execution();
         break;
     case 39:

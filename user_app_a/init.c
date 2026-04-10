@@ -23,14 +23,14 @@
  * SUCH DAMAGE.
  */
 
+/* This is the init process. It cleans up the killed processes. */
+
 #include "../user_lib/printf.h"
 #include "../user_lib/u_system_call.h"
 
 int main(void)
 {
-    uint64_t counter = 0;
+    while (1) u_clean_up();
 
-    while (1)
-        if (!(++counter % 100000000))
-            (void) printf("User app A\n");
+    return 0;
 }

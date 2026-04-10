@@ -146,6 +146,8 @@ extern int dummy;
 #define BYTES_PER_SCREEN_CHAR 2
 #define BYTES_PER_LINE        (SCREEN_WIDTH * BYTES_PER_SCREEN_CHAR)
 
+#define TAB_SIZE 4
+
 /* Colours. */
 #define BLUE 1
 #define RED  4
@@ -195,14 +197,17 @@ extern int dummy;
 #define SOFTWARE_INT 0x80
 
 /* Software system call numbers. */
-#define SYS_CALL_WRITE 0
-#define SYS_CALL_SLEEP 1
+#define SYS_CALL_WRITE    0
+#define SYS_CALL_SLEEP    1
+#define SYS_CALL_EXIT     2
+#define SYS_CALL_CLEAN_UP 3
 
 /* Timer. */
 #define EVENTS_PER_SECOND 100
 
-/* Wait reasons. */
-#define TIMER_WAIT 0
+/* Sleep reasons. */
+#define TIMER_SLEEP        0
+#define INIT_PROCESS_SLEEP 1
 
 /* GDT. */
 #define USER_CODE_SEGMENT_INDEX 2

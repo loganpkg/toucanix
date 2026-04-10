@@ -31,4 +31,13 @@
 int u_system_write(uint8_t fd, const void *buf, uint64_t s);
 int u_sleep(uint64_t seconds);
 
+/*
+ * The correct number of arguments will always be supplied when calling
+ * a system function via C.
+ * If assembly is used and the wrong number of arguments is supplied, then rax
+ * will be set to SYS_ERROR, even though these C functions return "void".
+ */
+void u_exit(void);
+void u_clean_up(void);
+
 #endif

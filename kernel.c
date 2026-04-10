@@ -26,51 +26,43 @@
 #include "address.h"
 #include "allocator.h"
 #include "asm_lib.h"
-#include "assert.h"
 #include "defs.h"
 #include "interrupt.h"
 #include "k_printf.h"
 #include "paging.h"
 #include "process.h"
 #include "screen.h"
+#include "stop.h"
 
 extern char etext, edata, end;
 
 void kernel_main(void)
 {
-    int r;
     uint64_t pml4_pa;
 
     init_idt();
     init_screen();
 
     (void) k_printf("Physical memory map:\n");
-    r = print_memory_map_pa();
-    assert(r == 0);
+    stop(print_memory_map_pa());
 
     (void) k_printf("etext: %lx\n", (unsigned long) &etext);
     (void) k_printf("edata: %lx\n", (unsigned long) &edata);
     (void) k_printf("end: %lx\n", (unsigned long) &end);
 
-    r = init_free_physical_memory();
-    assert(r == 0);
+    stop(init_free_physical_memory());
 
-    r = check_physical_memory();
-    assert(r == 0);
+    stop(check_physical_memory());
 
-    pml4_pa = create_kernel_virtual_memory_space();
-    assert(pml4_pa != 0);
+    stop(!(pml4_pa = create_kernel_virtual_memory_space()));
 
-    r = report_physical_memory();
-    assert(r == 0);
+    stop(report_physical_memory());
 
-    r = check_physical_memory();
-    assert(r == 0);
+    stop(check_physical_memory());
 
     switch_pml4_pa(pml4_pa);
 
     (void) k_printf("Initialise process...\n");
 
-    r = start_init_process();
-    assert(r == 0);
+    stop(start_init_process());
 }

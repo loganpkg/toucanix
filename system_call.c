@@ -32,16 +32,26 @@ static int system_sleep(uint64_t seconds)
          * Timer needs to wrap around.
          * Complete the remaining time before the wrap around.
          */
-        while (timer_counter >= tc_orig) sleep(TIMER_WAIT);
+        while (timer_counter >= tc_orig) sleep(TIMER_SLEEP);
 
         stop = events_needed - (U64_MAX - tc_orig) - 1;
     } else {
         stop = tc_orig + events_needed;
     }
 
-    while (timer_counter < stop) sleep(TIMER_WAIT);
+    while (timer_counter < stop) sleep(TIMER_SLEEP);
 
     return 0;
+}
+
+static void system_exit(void)
+{
+    exit();
+}
+
+static void system_clean_up(void)
+{
+    clean_up();
 }
 
 void system_call(struct interrupt_stack_frame *isf_va)
@@ -74,6 +84,28 @@ void system_call(struct interrupt_stack_frame *isf_va)
         }
 
         isf_va->rax = (uint64_t) system_sleep(arg_array[0]);
+        break;
+
+    case SYS_CALL_EXIT:
+        /* Check number of args. */
+        if (isf_va->rdi != 0) {
+            isf_va->rax = SYS_ERROR;
+            return;
+        }
+
+        system_exit();
+        isf_va->rax = 0;
+        break;
+
+    case SYS_CALL_CLEAN_UP:
+        /* Check number of args. */
+        if (isf_va->rdi != 0) {
+            isf_va->rax = SYS_ERROR;
+            return;
+        }
+
+        system_clean_up();
+        isf_va->rax = 0;
         break;
 
     default:

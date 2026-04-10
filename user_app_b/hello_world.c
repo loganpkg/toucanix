@@ -28,8 +28,9 @@
 
 int main(void)
 {
-    while (1) {
-        (void) printf("---------- User app B ----------\n");
-        (void) u_sleep(2);
-    }
+    (void) printf("---------- User app B: Start ----------\n");
+    (void) u_sleep(5);
+    (void) printf("---------- User app B: End ----------\n");
+
+    return 0;
 }

@@ -26,10 +26,12 @@
 
 section .text
 extern main
+extern u_exit
 
 global _start
 
 _start:
     call main
+    call u_exit
     .done:
     jmp .done

@@ -31,6 +31,7 @@
 #include "k_printf.h"
 #include "ll.h"
 #include "paging.h"
+#include "stop.h"
 
 #define KERNEL_PID 0
 
@@ -55,7 +56,7 @@ struct process_control_block {
     uint32_t ppid; /* Parent process Id. */
     uint32_t state;
 
-    int wait_reason;
+    int sleep_reason;
 };
 
 struct task_state_segment {
@@ -77,7 +78,7 @@ struct switch_stack_frame {
 static struct process_control_block pcb[MAX_PROCESSES];
 
 static struct linked_list ready_list;
-static struct linked_list wait_list;
+static struct linked_list sleep_list;
 static struct linked_list kill_list;
 
 static int current_index = -1;
@@ -123,7 +124,7 @@ static void print_pcb(void)
             (void) k_printf("isf_va: %lx\n", pcb[i].isf_va);
             (void) k_printf("rsp_save: %lu\n", pcb[i].rsp_save);
 
-            (void) k_printf("wait_reason: %ld\n", pcb[i].wait_reason);
+            (void) k_printf("sleep_reason: %ld\n", pcb[i].sleep_reason);
         }
     }
 }
@@ -194,7 +195,10 @@ static int prepare_process(uint64_t bin_pa, uint64_t bin_size)
 
 int start_init_process(void)
 {
-    /* Start the first process. */
+    /*
+     * Start the first process, called init.
+     * Prepares other user processes too.
+     */
 
     /* Clear tss struct. */
     memset(&tss, 0, sizeof(struct task_state_segment));
@@ -203,12 +207,14 @@ int start_init_process(void)
     memset(pcb, 0, sizeof(struct process_control_block) * MAX_PROCESSES);
 
     init_ll(&ready_list);
-    init_ll(&wait_list);
+    init_ll(&sleep_list);
     init_ll(&kill_list);
 
+    /* This is the init process. */
     if (prepare_process(USER_A_PA, USER_A_SIZE))
         return -1;
 
+    /* Other user processes. */
     if (prepare_process(USER_B_PA, USER_B_SIZE))
         return -1;
 
@@ -219,6 +225,7 @@ int start_init_process(void)
     if (!ready_list.used_count)
         return -1;
 
+    /* The init process. */
     if (pop_from_head_ll(&ready_list, &current_index))
         return -1;
 
@@ -233,18 +240,19 @@ int start_init_process(void)
     return 0;
 }
 
-static int schedule(void)
+static void schedule(void)
 {
     int old_current_index;
 
     /* Do nothing if only the current process. */
-    if (!ready_list.used_count)
-        return 0; /* Not an error. */
+    if (!ready_list.used_count) {
+        pcb[current_index].state = RUNNING_PROCESS;
+        return; /* Not an error. */
+    }
 
     old_current_index = current_index;
 
-    if (pop_from_head_ll(&ready_list, &current_index))
-        return -1;
+    stop(pop_from_head_ll(&ready_list, &current_index));
 
     pcb[current_index].state = RUNNING_PROCESS;
 
@@ -253,38 +261,28 @@ static int schedule(void)
 
     switch_process(
         &pcb[old_current_index].rsp_save, pcb[current_index].rsp_save);
-
-    return 0;
 }
 
-int give_up_execution(void)
+void give_up_execution(void)
 {
-    if (push_to_tail_ll(&ready_list, current_index))
-        return -1;
+    stop(push_to_tail_ll(&ready_list, current_index));
 
     pcb[current_index].state = READY_PROCESS;
 
-    if (schedule())
-        return -1;
-
-    return 0;
+    schedule();
 }
 
-int sleep(int wait_reason)
+void sleep(int sleep_reason)
 {
-    if (push_to_head_ll(&wait_list, current_index))
-        return -1;
+    stop(push_to_head_ll(&sleep_list, current_index));
 
     pcb[current_index].state = SLEEPING_PROCESS;
-    pcb[current_index].wait_reason = wait_reason;
+    pcb[current_index].sleep_reason = sleep_reason;
 
-    if (schedule())
-        return -1;
-
-    return 0;
+    schedule();
 }
 
-int wake(int wait_reason)
+void wake_up(int sleep_reason)
 {
     /*
      * Wake up all processes that are asleep for a given reason.
@@ -292,22 +290,50 @@ int wake(int wait_reason)
      */
 
     int i, next;
-    struct linked_list *w = &wait_list;
+    struct linked_list *w = &sleep_list;
 
     /* Walk the linked list. */
     i = w->head;
     while (i != -1) {
         next = w->list[i].next; /* Save as the node might get deleted. */
 
-        if (pcb[w->list[i].data].wait_reason == wait_reason) {
-            if (push_to_head_ll(&ready_list, w->list[i].data))
-                return -1;
-
-            if (remove_node_ll(&wait_list, i))
-                return -1;
+        if (pcb[w->list[i].data].sleep_reason == sleep_reason) {
+            stop(push_to_head_ll(&ready_list, w->list[i].data));
+            stop(remove_node_ll(&sleep_list, i));
         }
         i = next;
     }
+}
 
-    return 0;
+void exit(void)
+{
+    stop(push_to_tail_ll(&kill_list, current_index));
+
+    pcb[current_index].state = KILL_PROCESS;
+
+    wake_up(INIT_PROCESS_SLEEP);
+    schedule();
+}
+
+void clean_up(void)
+{
+    /* Called by init process. Cleans up all killed processes. */
+    int i, index;
+
+    while (1) {
+        i = kill_list.head;
+        while (i != -1) {
+            stop(pop_from_head_ll(&kill_list, &index));
+
+            /* Clean up. */
+            free_page_pa(va_to_pa(pcb[index].kernel_stack_page_va));
+            free_4_level_paging(pcb[index].pml4_pa);
+
+            memset(pcb + index, 0, sizeof(struct process_control_block));
+
+            i = kill_list.list[i].next;
+        }
+
+        sleep(INIT_PROCESS_SLEEP);
+    }
 }

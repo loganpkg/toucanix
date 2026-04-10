@@ -25,19 +25,16 @@
 
 #include "k_printf.h"
 
-#ifdef assert
-#undef assert
-#endif
+#ifndef STOP_H
+#define STOP_H
 
-#ifdef DEBUG
-#define assert(expression)                                                    \
+#define stop(expression)                                                      \
     do {                                                                      \
-        if (!(expression)) {                                                  \
-            (void) k_printf("%s: %lu: Assertion failed: " #expression "\n",   \
+        if (expression) {                                                     \
+            (void) k_printf("%s: %lu: stop tiggered: " #expression "\n",      \
                 __FILE__, (unsigned long) __LINE__);                          \
             while (1);                                                        \
         }                                                                     \
     } while (0)
-#else
-#define assert(expression) ((void) 0)
+
 #endif
