@@ -260,6 +260,11 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
         (void) k_printf("    rip: %lx\n", (unsigned long) isf_va->rip);
         (void) k_printf("    cr2: %lx\n", (unsigned long) get_cr2());
 
-        while (1);
+        if ((isf_va->cs & CPL_MASK) == USER_RING) {
+            (void) k_printf("Terminating user program...\n");
+            exit();
+        } else {
+            while (1);
+        }
     }
 }

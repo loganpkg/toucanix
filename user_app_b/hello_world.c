@@ -28,8 +28,10 @@
 
 int main(void)
 {
+    char *p_in_kernel_space = (char *) 0xffff8000000b8000;
     (void) printf("---------- User app B: Start ----------\n");
     (void) u_sleep(5);
+    *p_in_kernel_space = 'x';
     (void) printf("---------- User app B: End ----------\n");
 
     return 0;
