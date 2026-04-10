@@ -229,6 +229,9 @@ int start_init_process(void)
     if (pop_from_head_ll(&ready_list, &current_index))
         return -1;
 
+    if (pcb[current_index].state != READY_PROCESS)
+        return -1;
+
     pcb[current_index].state = RUNNING_PROCESS;
 
     tss.rsp0 = pcb[current_index].kernel_stack_page_va + PAGE_SIZE;
@@ -244,15 +247,13 @@ static void schedule(void)
 {
     int old_current_index;
 
-    /* Do nothing if only the current process. */
-    if (!ready_list.used_count) {
-        pcb[current_index].state = RUNNING_PROCESS;
-        return; /* Not an error. */
-    }
+    /* No ready processes. */
+    stop(!ready_list.used_count);
 
     old_current_index = current_index;
 
     stop(pop_from_head_ll(&ready_list, &current_index));
+    stop(pcb[current_index].state != READY_PROCESS);
 
     pcb[current_index].state = RUNNING_PROCESS;
 
@@ -266,7 +267,6 @@ static void schedule(void)
 void give_up_execution(void)
 {
     stop(push_to_tail_ll(&ready_list, current_index));
-
     pcb[current_index].state = READY_PROCESS;
 
     schedule();
@@ -275,7 +275,6 @@ void give_up_execution(void)
 void sleep(int sleep_reason)
 {
     stop(push_to_head_ll(&sleep_list, current_index));
-
     pcb[current_index].state = SLEEPING_PROCESS;
     pcb[current_index].sleep_reason = sleep_reason;
 
@@ -298,7 +297,11 @@ void wake_up(int sleep_reason)
         next = w->list[i].next; /* Save as the node might get deleted. */
 
         if (pcb[w->list[i].data].sleep_reason == sleep_reason) {
+            stop(pcb[w->list[i].data].state != SLEEPING_PROCESS);
+
             stop(push_to_head_ll(&ready_list, w->list[i].data));
+            pcb[w->list[i].data].state = READY_PROCESS;
+
             stop(remove_node_ll(&sleep_list, i));
         }
         i = next;
@@ -308,7 +311,6 @@ void wake_up(int sleep_reason)
 void exit(void)
 {
     stop(push_to_tail_ll(&kill_list, current_index));
-
     pcb[current_index].state = KILL_PROCESS;
 
     wake_up(INIT_PROCESS_SLEEP);
@@ -324,6 +326,7 @@ void clean_up(void)
         i = kill_list.head;
         while (i != -1) {
             stop(pop_from_head_ll(&kill_list, &index));
+            stop(pcb[index].state != KILL_PROCESS);
 
             /* Clean up. */
             free_page_pa(va_to_pa(pcb[index].kernel_stack_page_va));
