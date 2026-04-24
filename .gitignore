@@ -3,6 +3,7 @@ user_app_a/user_a
 user_app_b/user_b
 user_app_c/user_c
 test/test_ll
+test/test_circular_buffer
 a.out
 *.bin
 *.img

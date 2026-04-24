@@ -46,7 +46,7 @@ cc=clang
 ld=ld.lld
 # ld=ld
 
-cc_op='-DTOUCANIX -DDEBUG'
+cc_op='-DTOUCANIX -DDEBUG -DDEBUG_SCAN_CODES=0'
 
 if [ "$cc" = clang ]
 then
@@ -325,6 +325,8 @@ cc_c paging.c
 cc_c process.c
 cc_c system_call.c
 cc_c ll.c
+cc_c circular_buffer.c
+cc_c keyboard.c
 cc_c user_lib/printf.c
 cc_c user_app_a/init.c
 cc_c user_app_b/hello_world.c
@@ -338,7 +340,7 @@ ar rsc user_lib/user_lib.a user_lib/u_system_call_a.o user_lib/printf_c.o
 "$ld" $ld_op -T linker_script.ld -o kernel \
     kernel_a.o kernel_c.o interrupt_a.o interrupt_c.o asm_lib_a.o \
     k_printf_c.o screen_c.o allocator_c.o paging_a.o paging_c.o process_c.o \
-    system_call_c.o ll.o
+    system_call_c.o ll.o circular_buffer.o keyboard.o
 
 
 "$ld" $ld_op -T user_lib/u_linker_script.ld -o user_app_a/user_a \
@@ -393,5 +395,9 @@ qemu-system-x86_64 -display curses -cpu kvm64,pdpe1gb -m 1024 \
 cc -c -DDEBUG -ansi -Wall -Wextra -pedantic ll.c
 cc -c -DDEBUG -ansi -Wall -Wextra -pedantic test/test_ll.c
 cc test_ll.o ll.o -o test/test_ll
+
+cc -c -DDEBUG -ansi -Wall -Wextra -pedantic circular_buffer.c
+cc -c -DDEBUG -ansi -Wall -Wextra -pedantic test/test_circular_buffer.c
+cc test_circular_buffer.o circular_buffer.o -o test/test_circular_buffer
 
 clean_up

@@ -39,19 +39,18 @@ PIT_COUNTER equ OSCILLATOR_FREQUENCY_HZ / EVENTS_PER_SECOND
 
 ; Programmable Interrupt Controller (PIC).
 ; IRQ = Interrupt ReQuest.
-PIC_MASTER_DATA     equ PIC_MASTER_COMMAND + 1
-PIC_SLAVE_COMMAND   equ 0xa0
-PIC_SLAVE_DATA      equ PIC_SLAVE_COMMAND + 1
 INIT_COMMAND        equ 1 << 4
 FOUR_BYTE_INIT_SEQ  equ 1
 IRQ_0_MAP           equ 32
+IQR_1_MAP           equ IRQ_0_MAP + 1
 IRQ_7_MAP           equ IRQ_0_MAP + 7
 NUM_IRQ_ON_MASTER   equ 8
 IRQ_8_MAP           equ IRQ_0_MAP + NUM_IRQ_ON_MASTER
 SLAVE_TO_MASTER_IQR equ 2
 MODE_8086           equ 1
-ONLY_IQR_0_ENABLED  equ 0xe
-MASK_ALL            equ 0xf
+IQR_0_ENABLE        equ 1
+IQR_1_ENABLE        equ 1 << 1
+MASK_ALL            equ 0xff
 
 
 
@@ -184,7 +183,7 @@ out PIC_MASTER_DATA, al
 mov al, MODE_8086
 out PIC_MASTER_DATA, al
 
-mov al, ONLY_IQR_0_ENABLED
+mov al, MASK_ALL ^ IQR_0_ENABLE ^ IQR_1_ENABLE
 out PIC_MASTER_DATA, al
 
 

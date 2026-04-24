@@ -49,6 +49,7 @@ global acknowledge_interrupt
 global enter_process
 global get_cr2
 global switch_process
+global read_byte
 
 
 %macro push_all 0
@@ -128,6 +129,10 @@ make_vector 18
 make_vector 19
 
 make_vector 32
+
+; PS/2 Keyboard.
+make_vector 33
+
 make_vector 39
 
 global system_software_interrupt
@@ -239,4 +244,15 @@ pop rbp
 pop rbx
 
 ; Jumps to interrupt_return function.
+ret
+
+
+
+
+read_byte:
+; Argument 1: rdi: Port address to read from.
+
+; This function reads one byte from the specified port.
+mov rdx, rdi
+in al, dx
 ret

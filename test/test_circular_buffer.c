@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Logan Ryan McLintock. All rights reserved.
+ * Copyright (c) 2026 Logan Ryan McLintock. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,41 +23,73 @@
  * SUCH DAMAGE.
  */
 
-#ifndef INTERRUPT_H
-#define INTERRUPT_H
+/* Test circular buffer. */
 
-#include "stdint.h"
+#include "../circular_buffer.h"
+#include <stdio.h>
 
-struct interrupt_stack_frame {
-    uint64_t r15;
-    uint64_t r14;
-    uint64_t r13;
-    uint64_t r12;
-    uint64_t r11;
-    uint64_t r10;
-    uint64_t r9;
-    uint64_t r8;
-    uint64_t rbp;
-    uint64_t rdi;
-    uint64_t rsi;
-    uint64_t rdx;
-    uint64_t rcx;
-    uint64_t rbx;
-    uint64_t rax;
+int main(void)
+{
+    unsigned char u;
+    struct circular_buffer cb;
 
-    uint64_t vector_number;
-    uint64_t error_code;
-    uint64_t rip;
-    uint64_t cs;
-    uint64_t rflags;
-    uint64_t rsp;
-    uint64_t ss;
-};
+    init_cb(&cb);
 
-void interrupt_return(void);
-void init_idt(void);
-void enter_process(struct interrupt_stack_frame *isf_va);
-void switch_process(uint64_t *exiting_rsp_save, uint64_t entering_rsp_save);
-unsigned char read_byte(unsigned char port_address);
+    u = 'A';
+    write_to_cb(&cb, u);
+    dump_cb(&cb);
 
-#endif
+    u = 'B';
+    write_to_cb(&cb, u);
+    dump_cb(&cb);
+
+    u = 'C';
+    write_to_cb(&cb, u);
+    dump_cb(&cb);
+
+    u = 'D';
+    write_to_cb(&cb, u);
+    dump_cb(&cb);
+
+    u = 'E';
+    write_to_cb(&cb, u);
+    dump_cb(&cb);
+
+    read_from_cb(&cb, &u);
+    printf("Read: %c\n", u);
+    dump_cb(&cb);
+
+    read_from_cb(&cb, &u);
+    printf("Read: %c\n", u);
+    dump_cb(&cb);
+
+    u = 'F';
+    write_to_cb(&cb, u);
+    dump_cb(&cb);
+
+    u = 'G';
+    write_to_cb(&cb, u);
+    dump_cb(&cb);
+
+    u = 'H';
+    write_to_cb(&cb, u);
+    dump_cb(&cb);
+
+    read_from_cb(&cb, &u);
+    printf("Read: %c\n", u);
+    dump_cb(&cb);
+
+    read_from_cb(&cb, &u);
+    printf("Read: %c\n", u);
+    dump_cb(&cb);
+
+    read_from_cb(&cb, &u);
+    printf("Read: %c\n", u);
+    dump_cb(&cb);
+
+    read_from_cb(&cb, &u);
+    printf("Read: %c\n", u);
+    dump_cb(&cb);
+
+    return 0;
+}

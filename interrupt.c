@@ -28,6 +28,7 @@
 #include "asm_lib.h"
 #include "defs.h"
 #include "k_printf.h"
+#include "keyboard.h"
 #include "process.h"
 #include "screen.h"
 #include "system_call.h"
@@ -85,6 +86,10 @@ extern void vector_18(void);
 extern void vector_19(void);
 
 extern void vector_32(void);
+
+/* PS/2 Keyboard. */
+extern void vector_33(void);
+
 extern void vector_39(void);
 
 extern void system_software_interrupt(void);
@@ -136,6 +141,9 @@ void init_idt(void)
     set_isr(19);
 
     set_isr(32);
+
+    /* PS/2 Keyboard. */
+    set_isr(33);
     set_isr(39);
 
     update_idt_with_isr(idt + SOFTWARE_INT,
@@ -160,9 +168,11 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
     case 32:
         /* Timer */
 
+        /*
         v = (char *) VIDEO_VA;
         ++*v;
         *((uint8_t *) v + 1) = BLUE;
+        */
 
         acknowledge_interrupt();
         /*
@@ -172,6 +182,11 @@ void interrupt_handler(uint64_t address_of_interrupt_stack_frame)
         ++timer_counter;
         wake_up(TIMER_SLEEP);
         give_up_execution();
+        break;
+    case 33:
+        /* PS/2 Keyboard. */
+        keyboard();
+        acknowledge_interrupt();
         break;
     case 39:
         v = (char *) VIDEO_VA + 2;

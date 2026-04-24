@@ -28,11 +28,20 @@
 
 extern int dummy;
 
+#define k_printf printf
+
 /* [Doubly] Linked List. */
 #ifdef DEBUG
 #define MAX_NODES 4
 #else
 #define MAX_NODES 512
+#endif
+
+/* Circular buffer. */
+#ifdef DEBUG
+#define CIRCULAR_BUFFER_SIZE 4
+#else
+#define CIRCULAR_BUFFER_SIZE 512
 #endif
 
 #endif

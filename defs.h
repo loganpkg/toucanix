@@ -138,7 +138,11 @@ extern int dummy;
 #define EXTENDED_READ_FUNCTION_CODE 0x42
 #define BIOS_DISK_SERVICES          0x13
 
+/* Programmable Interrupt Controller (PIC). */
 #define PIC_MASTER_COMMAND 0x20
+#define PIC_MASTER_DATA    (PIC_MASTER_COMMAND + 1)
+#define PIC_SLAVE_COMMAND  0xa0
+#define PIC_SLAVE_DATA     (PIC_SLAVE_COMMAND + 1)
 
 #define SCREEN_WIDTH  80
 #define SCREEN_HEIGHT 25
@@ -187,6 +191,8 @@ extern int dummy;
 #define U64_MAX_HEX_DIGITS 18
 #define U64_MAX            0xFFFFFFFFFFFFFFFF
 #define U32_MAX            0xFFFFFFFF
+#define U8_MAX             0xFF
+#define ASCII_MAX          0x7F
 
 /* Standard file descriptors. */
 #define STDIN_FILENO  0
@@ -223,5 +229,8 @@ extern int dummy;
 
 /* [Doubly] Linked List. */
 #define MAX_NODES MAX_PROCESSES
+
+/* Circular buffer for keyboard. */
+#define CIRCULAR_BUFFER_SIZE 512
 
 #endif

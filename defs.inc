@@ -156,9 +156,11 @@ EXTENDED_READ_FUNCTION_CODE equ 0x42
 BIOS_DISK_SERVICES          equ 0x13
 
 
-
+; Programmable Interrupt Controller (PIC).
 PIC_MASTER_COMMAND equ 0x20
-
+PIC_MASTER_DATA    equ PIC_MASTER_COMMAND + 1
+PIC_SLAVE_COMMAND  equ 0xa0
+PIC_SLAVE_DATA     equ PIC_SLAVE_COMMAND + 1
 
 
 SCREEN_WIDTH equ 80
@@ -209,9 +211,10 @@ BUF_SIZE equ 1024
 ; Unsigned integer limits.
 U64_MAX_DEC_DIGITS equ 20
 U64_MAX_HEX_DIGITS equ 18
-U64_MAX equ 0xFFFFFFFFFFFFFFFF
-U32_MAX equ         0xFFFFFFFF
-
+U64_MAX   equ   0xFFFFFFFFFFFFFFFF
+U32_MAX   equ           0xFFFFFFFF
+U8_MAX    equ                 0xFF
+ASCII_MAX equ                 0x7F
 
 ; Standard file descriptors.
 STDIN_FILENO  equ 0
@@ -222,9 +225,9 @@ SYS_ERROR    equ   -1
 SOFTWARE_INT equ 0x80
 
 ; Software system call numbers.
-SYS_CALL_WRITE equ 0
-SYS_CALL_SLEEP equ 1
-SYS_CALL_EXIT equ 2
+SYS_CALL_WRITE    equ 0
+SYS_CALL_SLEEP    equ 1
+SYS_CALL_EXIT     equ 2
 SYS_CALL_CLEAN_UP equ 3
 
 
@@ -253,5 +256,7 @@ MAX_PROCESSES equ 1024
 ; [Doubly] Linked List.
 MAX_NODES equ MAX_PROCESSES
 
+; Circular buffer for keyboard.
+CIRCULAR_BUFFER_SIZE equ 512
 
 ;+ #endif

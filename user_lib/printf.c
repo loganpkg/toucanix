@@ -35,6 +35,16 @@
 
 #include "u_system_call.h"
 
+static int print_ch(char *buf, int *used, char ch)
+{
+    if (*used == BUF_SIZE)
+        return -1;
+
+    *(buf + (*used)++) = ch;
+
+    return 0;
+}
+
 static int print_str(char *buf, int *used, const char *str)
 {
     char ch;
@@ -124,11 +134,7 @@ int printf(const char *format, ...)
     va_list a;
     char buf[BUF_SIZE];
     int used;
-
     char ch;
-    char *str;
-    uint64_t x;
-    int64_t y;
 
     used = 0;
 
@@ -137,30 +143,30 @@ int printf(const char *format, ...)
     while ((ch = *format++) != '\0') {
         if (ch == '%') {
             switch (*format++) {
+            case 'c':
+                if (print_ch(buf, &used, (char) va_arg(a, int)) == -1)
+                    goto error;
+
+                break;
             case 's':
-                str = va_arg(a, char *);
-                if (print_str(buf, &used, str) == -1)
+                if (print_str(buf, &used, va_arg(a, char *)) == -1)
                     goto error;
 
                 break;
             case 'l':
                 switch (*format++) {
                 case 'u':
-                    x = va_arg(a, uint64_t);
-                    if (print_unsigned(buf, &used, x) == -1)
+                    if (print_unsigned(buf, &used, va_arg(a, uint64_t)) == -1)
                         goto error;
 
                     break;
                 case 'd':
-                    y = va_arg(a, int64_t);
-                    if (print_signed(buf, &used, y) == -1)
+                    if (print_signed(buf, &used, va_arg(a, int64_t)) == -1)
                         goto error;
 
                     break;
                 case 'x':
-                    x = va_arg(a, uint64_t);
-
-                    if (print_hex(buf, &used, x) == -1)
+                    if (print_hex(buf, &used, va_arg(a, uint64_t)) == -1)
                         goto error;
 
                     break;

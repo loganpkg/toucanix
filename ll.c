@@ -35,10 +35,6 @@
 #include <stdio.h>
 #endif
 
-#ifndef TOUCANIX
-#define k_printf printf
-#endif
-
 void dump_ll(struct linked_list *y)
 {
     int i;

@@ -28,9 +28,11 @@
 
 int main(void)
 {
-    uint64_t counter = 0;
+    /* uint64_t counter = 0; */
 
-    while (1)
-        if (!(++counter % 100000000))
-            (void) printf("==> User app C\n");
+    while (1) { }
+    /*
+            if (!(++counter % 100000000))
+                (void) printf("==> User app C\n");
+    */
 }
